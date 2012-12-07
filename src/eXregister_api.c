@@ -57,10 +57,11 @@ static const char *months[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Se
 
 static void
 _eXosip_register_set_date(osip_message_t *msg){
-	char tmp[256]={0};
+#if !defined(_WIN32_WCE)
+  char tmp[256]={0};
 	time_t curtime=time(NULL);
 	struct tm *ret;
-#ifndef WIN32
+#if !defined(WIN32)
 	struct tm gmt;
 	ret=gmtime_r(&curtime,&gmt);
 #else
@@ -70,6 +71,7 @@ _eXosip_register_set_date(osip_message_t *msg){
 	snprintf(tmp,sizeof(tmp)-1,"%s, %i %s %i %02i:%02i:%02i GMT",
 		 days[ret->tm_wday],ret->tm_mday,months[ret->tm_mon],1900+ret->tm_year,ret->tm_hour,ret->tm_min,ret->tm_sec);
 	osip_message_replace_header(msg,"Date",tmp);
+#endif
 }
 
 static int
