@@ -336,8 +336,11 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 
     }
     else if (i < 0) {
+#ifdef _WIN32_WCE
+      int my_errno = 0;
+#else
       int my_errno = errno;
-
+#endif
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Could not read socket (%i) (%i) (%s)\n", i, my_errno, strerror (my_errno)));
       if (my_errno == 57) {
         _udp_tl_reset (excontext);
