@@ -89,7 +89,7 @@ Here is the code to disable certificate verification:
 
 ~~~~~~~{.c}
 	int val=0;
-	i = eXosip_tls_verify_certificate (val);
+	i = eXosip_set_option (ctx, EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE, (void*)&val);
 ~~~~~~~
 
 If you require validation, a few work still needs to be done.
@@ -114,7 +114,7 @@ On macosx, exosip has built-in support for the certificate store.
       snprintf(tls_info.client.priv_key_pw, sizeof(tls_info.client.priv_key_pw), "password");
       snprintf(tls_info.root_ca_cert, sizeof(tls_info.root_ca_cert), "cacert.crt");
 
-      i = eXosip_set_tls_ctx (&tls_info);
+      i = eXosip_set_option (ctx, EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO, (void*)&tls_info);
 
 <H2>Additionnal setup</H2>
 
@@ -132,6 +132,13 @@ settings beyond default would be required.
 + EXOSIP_OPT_ADD_ACCOUNT_INFO 13
 + EXOSIP_OPT_DNS_CAPABILITIES 14
 + EXOSIP_OPT_SET_DSCP 15
++ EXOSIP_OPT_REGISTER_WITH_DATE 16
++ EXOSIP_OPT_SET_HEADER_USER_AGENT 17
+
++ EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE 500
++ EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO 501
++ EXOSIP_OPT_SET_TLS_CLIENT_CERTIFICATE_NAME 502
++ EXOSIP_OPT_SET_TLS_SERVER_CERTIFICATE_NAME 503
 
 Here is a basic setup that might be appropriate for usual configuration:
 
@@ -141,16 +148,16 @@ Here is a basic setup that might be appropriate for usual configuration:
 	eXosip_set_user_agent (ctx, "exosipdemo/0.0.0");
 
 	val=17000;
-	eXosip_set_option (ctx, EXOSIP_OPT_UDP_KEEP_ALIVE, &val);
+	eXosip_set_option (ctx, EXOSIP_OPT_UDP_KEEP_ALIVE, (void*)&val);
 
 	val=2;
-	eXosip_set_option (ctx, EXOSIP_OPT_DNS_CAPABILITIES, &val);
+	eXosip_set_option (ctx, EXOSIP_OPT_DNS_CAPABILITIES, (void*)&val);
 
 	val=1;
-	eXosip_set_option (ctx, EXOSIP_OPT_USE_RPORT, &val);
+	eXosip_set_option (ctx, EXOSIP_OPT_USE_RPORT, (void*)&val);
 
 	val=26;
-	eXosip_set_option (ctx, EXOSIP_OPT_SET_DSCP, &dscp_value);
+	eXosip_set_option (ctx, EXOSIP_OPT_SET_DSCP, (void*)&dscp_value);
 
 	eXosip_set_option (ctx, EXOSIP_OPT_SET_IPV4_FOR_GATEWAY, "sip.antisip.com");
 
