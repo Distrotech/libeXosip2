@@ -535,6 +535,29 @@ extern "C" {
 
   int _eXosip_transport_set_dscp(struct eXosip_t *excontext, int family, int sock);
 
+ /**
+  * sets the parameters for the TLS context, which is used for encrypted connections
+  * @return  the eXosip_tls_ctx_error code
+  */
+  eXosip_tls_ctx_error eXosip_set_tls_ctx (struct eXosip_t *excontext, eXosip_tls_ctx_t * ctx);
+
+/**
+  * Select by CN name the server certificate from OS store.
+  * 12/11/2009 -> implemented only for "Windows Certificate Store"
+  */
+  eXosip_tls_ctx_error eXosip_tls_use_server_certificate (struct eXosip_t *excontext, const char *local_certificate_cn);
+
+/**
+  * Select by CN name the client certificate from OS store.
+  * 31/1/2011 -> implemented only for "Windows Certificate Store"
+  */
+  eXosip_tls_ctx_error eXosip_tls_use_client_certificate (struct eXosip_t *excontext, const char *local_certificate_cn);
+
+/**
+  * Configure to accept/reject self signed and expired certificates.
+  */
+  eXosip_tls_ctx_error eXosip_tls_verify_certificate (struct eXosip_t *excontext, int _tls_verify_client_certificate);
+
 #ifdef __cplusplus
 }
 #endif

@@ -107,6 +107,12 @@ extern "C" {
 #define EXOSIP_OPT_DNS_CAPABILITIES (EXOSIP_OPT_BASE_OPTION+14)
 #define EXOSIP_OPT_SET_DSCP (EXOSIP_OPT_BASE_OPTION+15)
 #define EXOSIP_OPT_REGISTER_WITH_DATE (EXOSIP_OPT_BASE_OPTION+16)
+#define EXOSIP_OPT_SET_HEADER_USER_AGENT (EXOSIP_OPT_BASE_OPTION+17)
+
+#define EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE (EXOSIP_OPT_BASE_OPTION+500)
+#define EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO (EXOSIP_OPT_BASE_OPTION+501)
+#define EXOSIP_OPT_SET_TLS_CLIENT_CERTIFICATE_NAME (EXOSIP_OPT_BASE_OPTION+502)
+#define EXOSIP_OPT_SET_TLS_SERVER_CERTIFICATE_NAME (EXOSIP_OPT_BASE_OPTION+503)
 
   /* non standard option: need a compilation flag to activate */
 #define EXOSIP_OPT_KEEP_ALIVE_OPTIONS_METHOD (EXOSIP_OPT_BASE_OPTION+1000)
@@ -177,51 +183,6 @@ extern "C" {
     TLS_ERR_NO_ROOT_CA = -4,                            /**< no absolute path to the rootCA file was specified */
     TLS_ERR_MISSING_AUTH_PART = -5              /**< something is missing: the private key or the certificate */
   } eXosip_tls_ctx_error;
-
- /**
-  * sets the parameters for the TLS context, which is used for encrypted connections
-  * 
-  * @param excontext    eXosip_t instance.
-  * @param ctx a struct which holds the necessary parameters
-  *
-  * @return  the eXosip_tls_ctx_error code
-  */
-  eXosip_tls_ctx_error eXosip_set_tls_ctx (struct eXosip_t *excontext, eXosip_tls_ctx_t * ctx);
-
-/**
-  * Select by CN name the server certificate from OS store.
-  *
-  * 12/11/2009 -> implemented only for "Windows Certificate Store"
-  *
-  * @param excontext    eXosip_t instance.
-  * @param local_certificate_cn  CN name of the certificate to send on incoming connection
-  *
-  * @return  the eXosip_tls_ctx_error code
-  */
-  eXosip_tls_ctx_error eXosip_tls_use_server_certificate (struct eXosip_t *excontext, const char *local_certificate_cn);
-
-/**
-  * Select by CN name the client certificate from OS store.
-  *
-  * 31/1/2011 -> implemented only for "Windows Certificate Store"
-  *
-  * @param excontext    eXosip_t instance.
-  * @param local_certificate_cn  CN name of the certificate to send on outgoing connection
-  *
-  * @return  the eXosip_tls_ctx_error code
-  */
-  eXosip_tls_ctx_error eXosip_tls_use_client_certificate (struct eXosip_t *excontext, const char *local_certificate_cn);
-
-/**
-  * Configure to accept/reject self signed and expired certificates.
-  * NOTE: default is to accept (0)
-  *
-  * @param excontext    eXosip_t instance.
-  * @param _tls_verify_client_certificate  ">0": refuse self signed and expired certificates
-  *
-  * @return  the eXosip_tls_ctx_error code
-  */
-  eXosip_tls_ctx_error eXosip_tls_verify_certificate (struct eXosip_t *excontext, int _tls_verify_client_certificate);
 
 /**
  * Start and return osip_naptr context.

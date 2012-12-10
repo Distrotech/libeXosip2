@@ -973,6 +973,32 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     val = *((int *) value);
     excontext->register_with_date = val;
     break;
+  case EXOSIP_OPT_SET_HEADER_USER_AGENT:
+    {
+      const char *user_agent=(const char*)value;
+      osip_free (excontext->user_agent);
+      if (user_agent==NULL || user_agent[0]=='\0')
+        excontext->user_agent = osip_strdup ("eXosip/" EXOSIP_VERSION);
+      else
+        excontext->user_agent = osip_strdup (user_agent);
+    }
+    break;
+  case EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE:
+    val = *((int *) value);
+    eXosip_tls_verify_certificate(excontext, val);
+    break;
+  case EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO:
+    {
+      eXosip_tls_ctx_t *tlsval = (eXosip_tls_ctx_t *) value;
+      eXosip_set_tls_ctx(excontext, tlsval);
+    }
+    break;
+  case EXOSIP_OPT_SET_TLS_CLIENT_CERTIFICATE_NAME:
+    eXosip_tls_use_client_certificate(excontext, (const char*)value);
+    break;
+  case EXOSIP_OPT_SET_TLS_SERVER_CERTIFICATE_NAME:
+    eXosip_tls_use_server_certificate(excontext, (const char*)value);
+    break;
   default:
     return OSIP_BADPARAMETER;
   }
