@@ -1,4 +1,5 @@
 eXosip2 (4.0.0)
+	* modify configuration APIs to use eXosip_set_option
 	* fix bug: do not create new PRACK if it already exist for an answer.
 	* update to latest osip // test time compensation for android.
 	* use ephemaral port in standard TCP and TLS version.
