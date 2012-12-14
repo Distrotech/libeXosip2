@@ -789,6 +789,14 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
   }
 
   if (error || *addrinfo == NULL) {
+#if defined(HAVE_RESOLV_H)
+    /* When a DNS server has changed after roaming to a new network. The
+       new one should be automatically used. However, a few system are not
+       doing this automatically so, when the DNS server is not accessible,
+       we force getaddrinfo to use the new one after the first failure. */
+    if (error==EAI_AGAIN)
+      res_init();
+#endif
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "getaddrinfo failure. %s:%s (%d)\n", hostname, portbuf, error));
     return OSIP_UNKNOWN_HOST;
   }
