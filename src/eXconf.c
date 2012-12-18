@@ -1008,25 +1008,23 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
 static void
 _eXosip_keep_alive (struct eXosip_t *excontext)
 {
-  static struct timeval mtimer = { 0, 0 };
-
   struct timeval now;
 
   osip_gettimeofday (&now, NULL);
 
-  if (mtimer.tv_sec == 0 && mtimer.tv_usec == 0) {
+  if (excontext->mtimer.tv_sec == 0 && excontext->mtimer.tv_usec == 0) {
     /* first init */
-    osip_gettimeofday (&mtimer, NULL);
-    add_gettimeofday (&mtimer, excontext->keep_alive);
+    osip_gettimeofday (&excontext->mtimer, NULL);
+    add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
   }
 
-  if (osip_timercmp (&now, &mtimer, <)) {
+  if (osip_timercmp (&now, &excontext->mtimer, <)) {
     return;                     /* not yet time */
   }
 
   /* reset timer */
-  osip_gettimeofday (&mtimer, NULL);
-  add_gettimeofday (&mtimer, excontext->keep_alive);
+  osip_gettimeofday (&excontext->mtimer, NULL);
+  add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
 
   eXtl_udp.tl_keepalive (excontext);
   eXtl_tcp.tl_keepalive (excontext);
