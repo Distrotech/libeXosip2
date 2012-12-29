@@ -233,7 +233,6 @@ eXosip_call_send_initial_invite (struct eXosip_t *excontext, osip_message_t * in
   int i;
 
   if (invite == NULL) {
-    osip_message_free (invite);
     return OSIP_BADPARAMETER;
   }
 
@@ -358,8 +357,11 @@ eXosip_call_send_ack (struct eXosip_t *excontext, int did, osip_message_t * ack)
   char *host = NULL;
   int port;
 
-  if (did <= 0)
+  if (did <= 0) {
+    if (ack != NULL)
+      osip_message_free (ack);
     return OSIP_BADPARAMETER;
+  }
   if (did > 0) {
     _eXosip_call_dialog_find (excontext, did, &jc, &jd);
   }
