@@ -303,6 +303,7 @@ _tls_add_certificates (SSL_CTX * ctx)
     /*tls_dump_cert_info("CA", cert); */
 
     if (!X509_STORE_add_cert (ctx->cert_store, cert)) {
+      X509_free (cert);
       continue;
     }
     count++;
@@ -321,6 +322,7 @@ _tls_add_certificates (SSL_CTX * ctx)
     /*tls_dump_cert_info("ROOT", cert); */
 
     if (!X509_STORE_add_cert (ctx->cert_store, cert)) {
+      X509_free (cert);
       continue;
     }
     count++;
@@ -339,6 +341,7 @@ _tls_add_certificates (SSL_CTX * ctx)
     /*tls_dump_cert_info("MY", cert); */
 
     if (!X509_STORE_add_cert (ctx->cert_store, cert)) {
+      X509_free (cert);
       continue;
     }
     count++;
@@ -357,6 +360,7 @@ _tls_add_certificates (SSL_CTX * ctx)
     /*tls_dump_cert_info("Trustedpublisher", cert); */
 
     if (!X509_STORE_add_cert (ctx->cert_store, cert)) {
+      X509_free (cert);
       continue;
     }
     count++;
@@ -414,6 +418,7 @@ _tls_add_certificates (SSL_CTX * ctx)
         /*tls_dump_cert_info("ROOT", cert); */
 
         if (!X509_STORE_add_cert (ctx->cert_store, cert)) {
+          X509_free (cert);
           continue;
         }
         count++;
