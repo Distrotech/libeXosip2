@@ -687,6 +687,7 @@ eXosip_init (struct eXosip_t *excontext)
 
   excontext->use_rport = 1;
   excontext->dns_capabilities = 2;
+  excontext->enable_dns_cache = 1;
   excontext->keep_alive = 17000;
   excontext->keep_alive_options = 0;
 
@@ -982,6 +983,10 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
       else
         excontext->user_agent = osip_strdup (user_agent);
     }
+    break;
+  case EXOSIP_OPT_ENABLE_DNS_CACHE:
+    val = *((int *) value);
+    excontext->enable_dns_cache = val;
     break;
   case EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE:
     val = *((int *) value);

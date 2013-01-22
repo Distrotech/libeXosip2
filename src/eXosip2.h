@@ -418,6 +418,7 @@ extern "C" {
     int learn_port;
     int use_rport;
     int dns_capabilities;
+    int enable_dns_cache;
     int dscp;
     int register_with_date;
     char ipv4_for_gateway[256];
