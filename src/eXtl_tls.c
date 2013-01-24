@@ -2927,6 +2927,17 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
 
   OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Message sent: (to dest=%s:%i) \n%s\n", host, port, message));
 
+  if (pos>=0 && excontext->enable_dns_cache==1 && osip_strcasecmp (host, reserved->socket_tab[pos].remote_ip) != 0 && MSG_IS_REQUEST (sip)) {
+    if (MSG_IS_REGISTER (sip)) {
+      struct eXosip_dns_cache entry;
+
+      memset (&entry, 0, sizeof (struct eXosip_dns_cache));
+      snprintf (entry.host, sizeof (entry.host), "%s", host);
+      snprintf (entry.ip, sizeof (entry.ip), "%s", reserved->socket_tab[pos].remote_ip);
+      eXosip_set_option (excontext, EXOSIP_OPT_ADD_DNS_CACHE, (void *) &entry);
+    }
+  }
+
   SSL_set_mode (ssl, SSL_MODE_AUTO_RETRY);
 
   ptr=message;
