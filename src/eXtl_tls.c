@@ -1082,7 +1082,7 @@ eXosip_tls_verify_certificate (struct eXosip_t * excontext, int _tls_verify_clie
 SSL_CTX *
 initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport)
 {
-  SSL_METHOD *meth = NULL;
+  const SSL_METHOD *meth = NULL;
   X509 *cert = NULL;
   SSL_CTX *ctx;
 
@@ -1228,7 +1228,7 @@ initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_loc
 SSL_CTX *
 initialize_server_ctx (struct eXosip_t *excontext, const char *certif_local_cn_name, eXosip_tls_ctx_t * srv_ctx, int transport)
 {
-  SSL_METHOD *meth = NULL;
+  const SSL_METHOD *meth = NULL;
   SSL_CTX *ctx;
   X509 *cert = NULL;
 
