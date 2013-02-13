@@ -34,10 +34,25 @@
 
 #include <osipparser2/osip_port.h>
 
-#if defined(_WIN32_WCE)
-#elif defined(WIN32)
+#if defined(WIN32) && !defined(_WIN32_WCE)
+#define HAVE_WINDNS_H
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef HAVE_WINDNS_H
+#endif
+#endif
+
+#if defined(WIN32)
+#define HAVE_IPHLPAPI_H
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef HAVE_IPHLPAPI_H
+#endif
+#endif
+
+#if defined(WIN32)
+#if defined(HAVE_WINDNS_H)
 #include <windns.h>
 #include <malloc.h>
+#endif
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -397,80 +412,6 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
 #endif
 
 #if defined(WIN32) || defined(_WIN32_WCE)
-
-/* You need the Platform SDK to compile this. */
-#include <windows.h>
-#include <iphlpapi.h>
-
-int
-eXosip_dns_get_local_fqdn (char **servername, char **serverip, char **netmask, unsigned int WIN32_interface)
-{
-  unsigned int pos;
-
-  *servername = NULL;           /* no name on win32? */
-  *serverip = NULL;
-  *netmask = NULL;
-
-  /* First, try to get the interface where we should listen */
-  {
-    DWORD size_of_iptable = 0;
-
-    PMIB_IPADDRTABLE ipt;
-
-    PMIB_IFROW ifrow;
-
-    if (GetIpAddrTable (NULL, &size_of_iptable, TRUE) == ERROR_INSUFFICIENT_BUFFER) {
-      ifrow = (PMIB_IFROW) osip_malloc (sizeof (MIB_IFROW));
-      ipt = (PMIB_IPADDRTABLE) osip_malloc (size_of_iptable);
-      if (ifrow == NULL || ipt == NULL) {
-        /* not very usefull to continue */
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO4, NULL, "ERROR alloca failed\r\n"));
-	if (ifrow!=NULL) osip_free(ifrow);
-	if (ipt!=NULL) osip_free(ipt);
-        return OSIP_NOMEM;
-      }
-
-      if (!GetIpAddrTable (ipt, &size_of_iptable, TRUE)) {
-        /* look for the best public interface */
-
-        for (pos = 0; pos < ipt->dwNumEntries && *netmask == NULL; ++pos) {
-          /* index is */
-          struct in_addr addr;
-
-          struct in_addr mask;
-
-          ifrow->dwIndex = ipt->table[pos].dwIndex;
-          if (GetIfEntry (ifrow) == NO_ERROR) {
-            switch (ifrow->dwType) {
-            case MIB_IF_TYPE_LOOPBACK:
-              /*    break; */
-            case MIB_IF_TYPE_ETHERNET:
-            default:
-              addr.s_addr = ipt->table[pos].dwAddr;
-              mask.s_addr = ipt->table[pos].dwMask;
-              if (ipt->table[pos].dwIndex == WIN32_interface) {
-                *servername = NULL;     /* no name on win32? */
-                *serverip = osip_strdup (inet_ntoa (addr));
-                *netmask = osip_strdup (inet_ntoa (mask));
-                OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO4, NULL, "Interface ethernet: %s/%s\r\n", *serverip, *netmask));
-                break;
-              }
-            }
-          }
-        }
-      }
-      osip_free(ifrow);
-      osip_free(ipt);
-    }
-  }
-
-  if (*serverip == NULL || *netmask == NULL) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "ERROR No network interface found\r\n"));
-    return OSIP_NO_NETWORK;
-  }
-
-  return OSIP_SUCCESS;
-}
 
 int
 _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address, int size)
@@ -1936,7 +1877,7 @@ eXosip_dnsutils_naptr (struct eXosip_t *excontext, const char *domain, const cha
   int pos;
   int i;
 
-#if defined(WIN32) && !defined(_WIN32_WCE)
+#if defined(HAVE_WINDNS_H)
   DNS_STATUS err;
   DWORD buf_length = 0;
   IP4_ARRAY *dns_servers;
@@ -1979,7 +1920,7 @@ eXosip_dnsutils_naptr (struct eXosip_t *excontext, const char *domain, const cha
     return NULL;
   }
 
-#if defined(WIN32) && !defined(_WIN32_WCE)
+#if defined(HAVE_WINDNS_H)
   err = DnsQueryConfig (DnsConfigDnsServerList, 0, NULL, NULL, NULL, &buf_length);
   if (err == DNS_ERROR_NO_DNS_SERVERS) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip_dnsutils_naptr: no DNS server configured\n"));

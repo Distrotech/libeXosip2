@@ -30,13 +30,30 @@
 #include <sys/stat.h>
 #endif
 
-#ifdef WIN32
+#if defined(_MSC_VER) && defined(WIN32) && !defined(_WIN32_WCE)
+#define HAVE_MSTCPIP_H
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef HAVE_MSTCPIP_H
+#endif
+#endif
+
+#if defined(WIN32)
+#define HAVE_WINCRYPT_H
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef HAVE_WINCRYPT_H
+#endif
+#endif
+
+#ifdef HAVE_MSTCPIP_H
 #include <Mstcpip.h>
-#include <wincrypt.h>
 #else
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
+#endif
+
+#ifdef HAVE_WINCRYPT_H
+#include <wincrypt.h>
 #endif
 
 #if !defined(_WIN32_WCE)
@@ -290,7 +307,7 @@ _tls_add_certificates (SSL_CTX * ctx)
 {
   int count = 0;
 
-#ifdef WIN32
+#ifdef HAVE_WINCRYPT_H
   PCCERT_CONTEXT pCertCtx;
   X509 *cert = NULL;
   HCERTSTORE hStore = CertOpenSystemStore (0, L"CA");
@@ -443,7 +460,7 @@ _tls_add_certificates (SSL_CTX * ctx)
   return count;
 }
 
-#ifdef WIN32
+#ifdef HAVE_WINCRYPT_H
 
 struct rsa_ctx {
   const CERT_CONTEXT *cert;
@@ -593,7 +610,7 @@ rsa_finish (RSA * rsa)
 static X509 *
 _tls_set_certificate (SSL_CTX * ctx, const char *cn)
 {
-#ifdef WIN32
+#ifdef HAVE_WINCRYPT_H
   PCCERT_CONTEXT pCertCtx;
   X509 *cert = NULL;
   HCERTSTORE hStore = CertOpenSystemStore (0, L"CA");
@@ -1162,7 +1179,7 @@ initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_loc
     snprintf (szDirPath, sizeof (szDirPath), "%s", client_ctx->root_ca_cert);
 
     MultiByteToWideChar (CP_UTF8, 0, szDirPath, -1, wUnicodeDirPath, 2048);
-    hSearch = FindFirstFile (wUnicodeDirPath, &FileData);
+    hSearch = FindFirstFileEx (wUnicodeDirPath, FindExInfoStandard, &FileData, FindExSearchNameMatch, NULL, 0);
     if (hSearch != INVALID_HANDLE_VALUE) {
       if ((FileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
         caFolder = client_ctx->root_ca_cert;
@@ -2440,7 +2457,7 @@ _tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
         continue;
       }
     }
-#if !defined(_WIN32_WCE) && defined(_MSC_VER)
+#ifdef HAVE_MSTCPIP_H
     {
       DWORD err = 0L;
       DWORD dwBytes = 0L;

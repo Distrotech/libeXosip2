@@ -20,7 +20,14 @@
 #include "eXosip2.h"
 #include "eXtransport.h"
 
-#ifdef WIN32
+#if defined(_MSC_VER) && defined(WIN32) && !defined(_WIN32_WCE)
+#define HAVE_MSTCPIP_H
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef HAVE_MSTCPIP_H
+#endif
+#endif
+
+#ifdef HAVE_MSTCPIP_H
 #include <Mstcpip.h>
 #else
 #ifdef HAVE_FCNTL_H
@@ -849,7 +856,7 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
         continue;
       }
     }
-#if !defined(_WIN32_WCE) && defined(_MSC_VER)
+#ifdef HAVE_MSTCPIP_H
     {
       DWORD err = 0L;
       DWORD dwBytes = 0L;
