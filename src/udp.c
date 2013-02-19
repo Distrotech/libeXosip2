@@ -871,7 +871,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
 #else
                 /* use-case: 2/ a duplicate of initial INVITE is received (different TOP Via header) */
                 osip_list_add (&excontext->j_transactions, transaction, 0);
-                _eXosip_send_default_answer (excontext, NULL, transaction, evt, 404, NULL, "invite for duplicate registration", __LINE__);
+                _eXosip_send_default_answer (excontext, NULL, transaction, evt, 486, NULL, "invite for duplicate registration", __LINE__);
                 return;
 #endif
               }
