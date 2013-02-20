@@ -3325,7 +3325,7 @@ _eXosip_dnsutils_release (osip_naptr_t * naptr_record)
 #else
 
 struct osip_naptr *
-eXosip_dnsutils_naptr (const char *domain, const char *protocol, const char *transport, int keep_in_cache)
+eXosip_dnsutils_naptr (struct eXosip_t *excontext, const char *domain, const char *protocol, const char *transport, int keep_in_cache)
 {
   return NULL;
 }
