@@ -1,5 +1,5 @@
 
-EXTRA_DIST = README autogen.sh
+EXTRA_DIST = README autogen.sh LICENSE.OpenSSL
 
 SUBDIRS = scripts platform src include tools help
 
