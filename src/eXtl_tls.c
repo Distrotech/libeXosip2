@@ -1907,31 +1907,23 @@ _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sock
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Failed to verify remote certificate\n"));
       tls_dump_verification_failure (cert_err);
 
+#if 0
       if (reserved->eXosip_tls_ctx_params.server.cert[0] != '\0') {
         X509_free (cert);
         return -1;
       }
       else if (cert_err != X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
                && cert_err != X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN
-               && cert_err != X509_V_ERR_CRL_HAS_EXPIRED && cert_err != X509_V_ERR_CERT_HAS_EXPIRED && cert_err != X509_V_ERR_CERT_REVOKED && cert_err != X509_V_ERR_CERT_UNTRUSTED && cert_err != X509_V_ERR_CERT_REJECTED) {
+               && cert_err != X509_V_ERR_CRL_HAS_EXPIRED
+               && cert_err != X509_V_ERR_CERT_HAS_EXPIRED
+               && cert_err != X509_V_ERR_CERT_REVOKED
+               && cert_err != X509_V_ERR_CERT_UNTRUSTED
+               && cert_err != X509_V_ERR_CERT_REJECTED) {
         X509_free (cert);
         return -1;
       }
-      /*else -> I want to keep going ONLY when API didn't specified
-         any SSL server certificate */
-    }
-#if 0
-    {
-      char peer_CN[65];
-
-      memset (peer_CN, 0, sizeof (peer_CN));
-      X509_NAME_get_text_by_NID (X509_get_subject_name (cert), NID_commonName, peer_CN, sizeof (peer_CN));
-      if (osip_strcasecmp (sockinfo->remote_ip, peer_CN) != 0) {
-        SSL_set_verify_result (m_pSSL, X509_V_ERR_APPLICATION_VERIFICATION + 1);
-      }
-    }
 #endif
-
+    }
     X509_free (cert);
   }
   else {
