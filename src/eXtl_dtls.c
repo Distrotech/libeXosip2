@@ -636,10 +636,12 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
       if (co != NULL && co->url != NULL && co->url->host != NULL && 0 == osip_strcasecmp (co->url->host, reserved->dtls_firewall_ip)) {
         if (co->url->port == NULL && 0 != osip_strcasecmp (reserved->dtls_firewall_port, "5061")) {
           co->url->port = osip_strdup (reserved->dtls_firewall_port);
+          osip_message_force_update (req);
         }
         else if (co->url->port != NULL && 0 != osip_strcasecmp (reserved->dtls_firewall_port, co->url->port)) {
           osip_free (co->url->port);
           co->url->port = osip_strdup (reserved->dtls_firewall_port);
+          osip_message_force_update (req);
         }
       }
     }

@@ -1099,8 +1099,9 @@ _tcp_tl_update_local_target_use_ephemeral_port (struct eXosip_t *excontext, osip
       if (ephemeral_port > 0) {
         if (co->url->port)
           osip_free (co->url->port);
-        co->url->port = osip_malloc (10);
+        co->url->port = (char *)osip_malloc (10);
         snprintf (co->url->port, 9, "%i", ephemeral_port);
+        osip_message_force_update (req);
       }
     }
   }
@@ -1124,12 +1125,14 @@ _tcp_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req, c
         if (natted_port > 0) {
           if (co->url->port)
             osip_free (co->url->port);
-          co->url->port = osip_malloc (10);
+          co->url->port = (char*)osip_malloc (10);
           snprintf (co->url->port, 9, "%i", natted_port);
+          osip_message_force_update (req);
         }
         if (natted_ip != NULL && natted_ip[0] != '\0') {
           osip_free (co->url->host);
           co->url->host = osip_strdup (natted_ip);
+          osip_message_force_update (req);
         }
       }
     }
