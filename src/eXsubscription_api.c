@@ -223,6 +223,7 @@ eXosip_subscribe_build_refresh_request (struct eXosip_t *excontext, int did, osi
   if (transaction != NULL && transaction->orig_request != NULL) {
     int pos = 0;
     osip_header_t *_header = NULL;
+    osip_call_info_t *_call_info_header = NULL;
 
     pos = osip_message_get_supported (transaction->orig_request, pos, &_header);
     while (pos >= 0 && _header != NULL) {
@@ -237,6 +238,22 @@ eXosip_subscribe_build_refresh_request (struct eXosip_t *excontext, int did, osi
       _header = NULL;
       pos++;
       pos = osip_message_get_supported (transaction->orig_request, pos, &_header);
+    }
+
+    pos=0;
+    pos = osip_message_get_call_info (transaction->orig_request, pos, &_call_info_header);
+    while (pos >= 0 && _call_info_header != NULL) {
+      osip_call_info_t *_header2;
+
+      i = osip_call_info_clone (_call_info_header, &_header2);
+      if (i != 0) {
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Error in Call-Info header\n"));
+        break;
+      }
+      osip_list_add (&(*sub)->call_infos, _header2, -1);
+      _call_info_header = NULL;
+      pos++;
+      pos = osip_message_get_call_info (transaction->orig_request, pos, &_call_info_header);
     }
   }
 

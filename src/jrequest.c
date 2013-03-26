@@ -330,6 +330,24 @@ _eXosip_generating_request_out_of_dialog (struct eXosip_t *excontext, osip_messa
         else if (osip_strcasecmp (u_header->gname, "route") == 0) {
           osip_message_set_route (request, u_header->gvalue);
         }
+        else if (osip_strcasecmp (u_header->gname, "call-info") == 0) {
+          osip_message_set_call_info (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept") == 0) {
+          osip_message_set_accept (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept-encoding") == 0) {
+          osip_message_set_accept_encoding (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept-language") == 0) {
+          osip_message_set_accept_language (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "alert-info") == 0) {
+          osip_message_set_alert_info (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "allow") == 0) {
+          osip_message_set_allow (request, u_header->gvalue);
+        }
         else if (osip_strcasecmp (u_header->gname, "content-type") == 0) {
           osip_message_set_content_type (request, u_header->gvalue);
         }
@@ -376,6 +394,24 @@ _eXosip_generating_request_out_of_dialog (struct eXosip_t *excontext, osip_messa
         }
         else if (osip_strcasecmp (u_header->gname, "route") == 0) {
           osip_message_set_route (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "call-info") == 0) {
+          osip_message_set_call_info (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept") == 0) {
+          osip_message_set_accept (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept-encoding") == 0) {
+          osip_message_set_accept_encoding (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "accept-language") == 0) {
+          osip_message_set_accept_language (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "alert-info") == 0) {
+          osip_message_set_alert_info (request, u_header->gvalue);
+        }
+        else if (osip_strcasecmp (u_header->gname, "allow") == 0) {
+          osip_message_set_allow (request, u_header->gvalue);
         }
         else if (osip_strcasecmp (u_header->gname, "content-type") == 0) {
           osip_message_set_content_type (request, u_header->gvalue);
