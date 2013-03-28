@@ -924,7 +924,12 @@ eXosip_automatic_action (struct eXosip_t *excontext)
           }
           else if (js->s_reg_period == 0 || out_tr == NULL) {
           }
-          else if (now - out_tr->birth_time > js->s_reg_period - (js->s_reg_period / 10)) {     /* will expires in js->s_reg_period/10 sec: send refresh! */
+          else if ((out_tr->state == NICT_TERMINATED
+                  || out_tr->state == NICT_COMPLETED) && out_tr->orig_request != NULL && out_tr->last_response != NULL && (out_tr->last_response->status_code >= 300)) {
+                    /* refresh are not authorized after an error */
+          }
+          else if ((out_tr->state == NICT_TERMINATED
+                  || out_tr->state == NICT_COMPLETED) && (now - out_tr->birth_time > js->s_reg_period - (js->s_reg_period / 10) || now - out_tr->birth_time > js->s_reg_period - 6)) {     /* will expires in js->s_reg_period/10 sec OR 6 seconds: send refresh! */
             int i;
 
             i = _eXosip_subscribe_automatic_refresh (excontext, js, jd, out_tr);
@@ -973,7 +978,7 @@ eXosip_automatic_action (struct eXosip_t *excontext)
         /* automatic refresh */
         eXosip_register_send_register (excontext, jr->r_id, NULL);
       }
-      else if (jr->r_reg_period != 0 && now - jr->r_last_tr->birth_time > jr->r_reg_period - (jr->r_reg_period / 10)) {
+      else if (jr->r_reg_period != 0 && (now - jr->r_last_tr->birth_time > jr->r_reg_period - (jr->r_reg_period / 10) || now - jr->r_last_tr->birth_time > jr->r_reg_period - 6)) {
         /* automatic refresh */
         eXosip_register_send_register (excontext, jr->r_id, NULL);
       }
