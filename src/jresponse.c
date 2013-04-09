@@ -181,12 +181,6 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
   char firewall_ip[65];
   char firewall_port[10];
 
-  firewall_ip[0] = '\0';
-  firewall_port[0] = '\0';
-  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
-  }
-
   /* 12.1.1:
      copy all record-route in response
      add a contact with global scope
@@ -201,6 +195,16 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
       return i;
     osip_list_add (&response->record_routes, rr2, -1);
     pos++;
+  }
+
+  if (MSG_IS_BYE(request)) {
+    return OSIP_SUCCESS;
+  }
+
+  firewall_ip[0] = '\0';
+  firewall_port[0] = '\0';
+  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
+    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 
   memset (locip, '\0', sizeof (locip));
