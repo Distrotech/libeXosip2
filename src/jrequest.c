@@ -979,42 +979,7 @@ _eXosip_build_request_within_dialog (struct eXosip_t *excontext, osip_message_t 
   }
 
   /* add specific headers for each kind of request... */
-
-#if 0
-  {
-    char contact[200];
-
-    if (firewall_ip[0] != '\0') {
-      char *c_address = request->req_uri->host;
-
-      struct addrinfo *addrinfo;
-      struct __eXosip_sockaddr addr;
-
-      i = _eXosip_get_addrinfo (excontext, &addrinfo, request->req_uri->host, 5060, IPPROTO_UDP);
-      if (i == 0) {
-        memcpy (&addr, addrinfo->ai_addr, addrinfo->ai_addrlen);
-        _eXosip_freeaddrinfo (addrinfo);
-        c_address = inet_ntoa (((struct sockaddr_in *) &addr)->sin_addr);
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: here is the resolved destination host=%s\n", c_address));
-      }
-
-      if (_eXosip_is_public_address (c_address)) {
-        sprintf (contact, "<sip:%s@%s:%s>", dialog->local_uri->url->username, firewall_ip, firewall_port);
-      }
-      else {
-        sprintf (contact, "<sip:%s@%s:%s>", dialog->local_uri->url->username, locip, firewall_port);
-      }
-    }
-    else {
-      sprintf (contact, "<sip:%s@%s:%s>", dialog->local_uri->url->username, locip, firewall_port);
-    }
-    osip_message_set_contact (request, contact);
-    /* Here we'll add the supported header if it's needed! */
-    /* the require header must be added by the upper layer if needed */
-  }
-#else
   _eXosip_dialog_add_contact (excontext, request, NULL);
-#endif
 
   if (0 == strcmp ("NOTIFY", method)) {
   }
