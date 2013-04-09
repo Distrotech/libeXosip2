@@ -122,6 +122,7 @@ extern "C" {
 #define EXOSIP_OPT_REGISTER_WITH_DATE (EXOSIP_OPT_BASE_OPTION+16) /**< int *: enable usage of Date header in REGISTER */
 #define EXOSIP_OPT_SET_HEADER_USER_AGENT (EXOSIP_OPT_BASE_OPTION+17) /**< char *: set the User-Agent header */
 #define EXOSIP_OPT_ENABLE_DNS_CACHE (EXOSIP_OPT_BASE_OPTION+18) /**< int *: 0 to disable use of cache*/
+#define EXOSIP_OPT_ENABLE_AUTOANSWERBYE (EXOSIP_OPT_BASE_OPTION+19) /**< int *: 0 to disable automatic answer of BYE */
 
 #define EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE (EXOSIP_OPT_BASE_OPTION+500) /**< int *: enable verification of certificate for TLS connection */
 #define EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO (EXOSIP_OPT_BASE_OPTION+501) /**< eXosip_tls_ctx_t *: client and/or server certificate/ca-root/key info */
@@ -130,6 +131,7 @@ extern "C" {
 
   /* non standard option: need a compilation flag to activate */
 #define EXOSIP_OPT_KEEP_ALIVE_OPTIONS_METHOD (EXOSIP_OPT_BASE_OPTION+1000)
+#define EXOSIP_OPT_SET_TSC_SERVER (EXOSIP_OPT_BASE_OPTION+1001) /**< void*: set the tsc tunnel handle */
 
  /**
   * structure used to for inserting a DNS cache entry and avoid DNS resolution.

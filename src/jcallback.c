@@ -397,7 +397,11 @@ cb_rcvrequest (int type, osip_transaction_t * tr, osip_message_t * sip)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "cb_rcv? (id=%i)\r\n", tr->transactionid));
 
     if (MSG_IS_BYE (sip)) {
-      /* already sent */
+      if (excontext->autoanswer_bye==0) {
+        /* not already sent */
+        _eXosip_report_call_event (excontext, EXOSIP_CALL_MESSAGE_NEW, jc, jd, tr);
+        _eXosip_report_call_event (excontext, EXOSIP_CALL_CLOSED, jc, jd, tr);
+      }
     }
     else
       _eXosip_report_call_event (excontext, EXOSIP_CALL_MESSAGE_NEW, jc, jd, tr);

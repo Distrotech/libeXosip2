@@ -703,6 +703,7 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->enable_dns_cache = 1;
   excontext->keep_alive = 17000;
   excontext->keep_alive_options = 0;
+  excontext->autoanswer_bye = 1;
 
   eXtl_udp.tl_init (excontext);
   eXtl_tcp.tl_init (excontext);
@@ -1016,6 +1017,15 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     break;
   case EXOSIP_OPT_SET_TLS_SERVER_CERTIFICATE_NAME:
     eXosip_tls_use_server_certificate(excontext, (const char*)value);
+    break;
+  case EXOSIP_OPT_SET_TSC_SERVER:
+#ifdef TSC_SUPPORT
+    excontext->tunnel_handle = (void*)value;
+#endif
+    break;
+  case EXOSIP_OPT_ENABLE_AUTOANSWERBYE:
+    val = *((int *) value);
+    excontext->autoanswer_bye = val;
     break;
   default:
     return OSIP_BADPARAMETER;

@@ -399,6 +399,7 @@ extern "C" {
     void *eXtltls_reserved;
     void *eXtldtls_reserved;
 #endif
+    void *tunnel_handle;
     char transport[10];
     char *user_agent;
 
@@ -434,6 +435,7 @@ extern "C" {
     int enable_dns_cache;
     int dscp;
     int register_with_date;
+    int autoanswer_bye;
     char ipv4_for_gateway[256];
     char ipv6_for_gateway[256];
     struct eXosip_dns_cache dns_entries[MAX_EXOSIP_DNS_ENTRY];
