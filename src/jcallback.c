@@ -37,7 +37,6 @@
 #include <winsock2.h>
 #include "inet_ntop.h"
 #elif WIN32
-//#include <windowsx.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "inet_ntop.h"
