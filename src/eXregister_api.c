@@ -173,6 +173,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
             return OSIP_SYNTAXERROR;
           }
         }
+#ifdef NEED_UPDATE_EXPIRES
         else {
           osip_header_t *exp;
 
@@ -190,6 +191,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
             snprintf (exp->hvalue, 9, "%i", jr->r_reg_period);
           }
         }
+#endif
 
         osip_message_force_update (reg);
       }
