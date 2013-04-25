@@ -42,7 +42,6 @@
 #endif
 #else
 #include <windows.h>
-//#include <iphlpapi.h>
 #endif
 
 /* Private functions */
