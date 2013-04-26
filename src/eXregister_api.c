@@ -59,6 +59,7 @@ eXosip_register_remove (struct eXosip_t *excontext, int rid)
   if (jr == NULL)
     return OSIP_NOTFOUND;
   jr->r_reg_period = 0;
+  jr->r_reg_expire = 0;
   REMOVE_ELEMENT (excontext->j_reg, jr);
   _eXosip_reg_free (excontext, jr);
   jr = NULL;
@@ -164,6 +165,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
             osip_free (exp->hvalue);
             exp->hvalue = osip_strdup (min_exp->hvalue);
             jr->r_reg_period = atoi (min_exp->hvalue);
+            jr->r_reg_expire = jr->r_reg_period;
           }
           else {
             osip_message_free (reg);
@@ -173,7 +175,6 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
             return OSIP_SYNTAXERROR;
           }
         }
-#ifdef NEED_UPDATE_EXPIRES
         else {
           osip_header_t *exp;
 
@@ -188,10 +189,9 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
                 osip_message_free (last_response);
               return OSIP_NOMEM;
             }
-            snprintf (exp->hvalue, 9, "%i", jr->r_reg_period);
+            snprintf (exp->hvalue, 9, "%i", jr->r_reg_expire);
           }
         }
-#endif
 
         osip_message_force_update (reg);
       }
@@ -207,7 +207,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
     }
   }
   if (reg == NULL) {
-    i = _eXosip_generating_register (excontext, jr, &reg, excontext->transport, jr->r_aor, jr->r_registrar, jr->r_contact, jr->r_reg_period);
+    i = _eXosip_generating_register (excontext, jr, &reg, excontext->transport, jr->r_aor, jr->r_registrar, jr->r_contact, jr->r_reg_expire);
     if (i != 0)
       return i;
   }
@@ -260,6 +260,8 @@ eXosip_register_build_initial_register_withqvalue (struct eXosip_t *excontext, c
   else if (jr->r_reg_period < 30)       /* too low */
     jr->r_reg_period = 30;
 
+  jr->r_reg_expire = jr->r_reg_period;
+
   if (qvalue)
     osip_strncpy (jr->r_qvalue, qvalue, sizeof (jr->r_qvalue));
 
@@ -298,6 +300,8 @@ eXosip_register_build_register (struct eXosip_t *excontext, int rid, int expires
   }                             /* unregistration */
   else if (jr->r_reg_period < 30)       /* too low */
     jr->r_reg_period = 30;
+
+  jr->r_reg_expire = jr->r_reg_period;
 
   if (jr->r_last_tr != NULL) {
     if (jr->r_last_tr->state != NICT_TERMINATED && jr->r_last_tr->state != NICT_COMPLETED) {

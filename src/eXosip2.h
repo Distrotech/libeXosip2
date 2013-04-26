@@ -254,7 +254,9 @@ extern "C" {
 
     int r_id;
 
-    int r_reg_period;           /* delay between registration */
+    int r_reg_period;           /* delay between registration (modified by server) */
+    int r_reg_expire;           /* delay between registration (requested by client) */
+
     char *r_aor;                /* sip identity */
     char *r_registrar;          /* registrar */
     char *r_contact;            /* list of contacts string */
