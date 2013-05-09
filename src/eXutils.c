@@ -89,6 +89,10 @@
 #endif
 #endif
 
+#ifdef TSC_SUPPORT
+#include "tsc_socket_api.h"
+#include "tsc_control_api.h"
+#endif
 
 extern int ipv6_enable;
 
@@ -438,6 +442,16 @@ _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address,
   struct addrinfo *addrf = NULL;
 
   address[0] = '\0';
+
+#ifdef TSC_SUPPORT
+  if (excontext->tunnel_handle) {
+    tsc_config config;
+    tsc_get_config(excontext->tunnel_handle, &config);
+    tsc_ip_address_to_str(&(config.internal_address), address, TSC_ADDR_STR_LEN);
+    return 0;
+  }
+#endif
+
   sock = socket (family, SOCK_DGRAM, 0);
 
   if (family == AF_INET) {
@@ -766,6 +780,14 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "getaddrinfo returned: %s port %s\n", tmp, porttmp));
     }
   }
+
+   // only one address (?)
+   if (excontext->tunnel_handle)
+     {
+       (*addrinfo)->ai_next = 0;
+
+       return 0;
+     }
 
   return OSIP_SUCCESS;
 }
