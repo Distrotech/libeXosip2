@@ -839,7 +839,7 @@ verify_cb (int preverify_ok, X509_STORE_CTX * store)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "verify error:num=%d:%s:depth=%d:%s\n", err, X509_verify_cert_error_string (err), depth, buf));
   }
   else {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "depth=%d:%s\n", depth, buf));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "depth=%d:%s\n", depth, buf));
   }
   /*
    * At this point, err contains the last verification error. We can use
@@ -1249,7 +1249,7 @@ initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_loc
   }
 
   if (_tls_add_certificates (ctx) <= 0) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "no system certificate loaded\n"));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "no system certificate loaded\n"));
   }
 
   return ctx;
@@ -1306,7 +1306,7 @@ initialize_server_ctx (struct eXosip_t *excontext, const char *certif_local_cn_n
   }
 
   if (_tls_add_certificates (ctx) <= 0) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "no system certificate loaded\n"));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "no system certificate loaded\n"));
   }
 
   generate_eph_rsa_key (ctx);
@@ -2420,7 +2420,7 @@ _tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
         _eXosip_freeaddrinfo (addrinfo);
         return i;
       }
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "New binding with %s\n", src6host));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "New binding with %s\n", src6host));
     }
 
     sock = (int) socket (curinfo->ai_family, curinfo->ai_socktype, curinfo->ai_protocol);

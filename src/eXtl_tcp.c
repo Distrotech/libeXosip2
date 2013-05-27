@@ -833,7 +833,7 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
     res = getnameinfo ((struct sockaddr *) curinfo->ai_addr, curinfo->ai_addrlen, src6host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
 
     if (res == 0) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "New binding with %s:%i\n", src6host, port));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "New binding with %s:%i\n", src6host, port));
     }
 
     sock = (int) socket (curinfo->ai_family, curinfo->ai_socktype, curinfo->ai_protocol);
