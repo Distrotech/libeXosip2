@@ -123,6 +123,7 @@ extern "C" {
 #define EXOSIP_OPT_SET_HEADER_USER_AGENT (EXOSIP_OPT_BASE_OPTION+17) /**< char *: set the User-Agent header */
 #define EXOSIP_OPT_ENABLE_DNS_CACHE (EXOSIP_OPT_BASE_OPTION+18) /**< int *: 0 to disable use of cache*/
 #define EXOSIP_OPT_ENABLE_AUTOANSWERBYE (EXOSIP_OPT_BASE_OPTION+19) /**< int *: 0 to disable automatic answer of BYE */
+#define EXOSIP_OPT_ENABLE_IPV6 (EXOSIP_OPT_BASE_OPTION+20) /**< int *: 0 to disable -this is a per-eXosip_t parameter for using IPv6 DNS request */
 
 #define EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE (EXOSIP_OPT_BASE_OPTION+500) /**< int *: enable verification of certificate for TLS connection */
 #define EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO (EXOSIP_OPT_BASE_OPTION+501) /**< eXosip_tls_ctx_t *: client and/or server certificate/ca-root/key info */
@@ -286,7 +287,14 @@ extern "C" {
   int eXosip_set_cbsip_message (struct eXosip_t *excontext, CbSipCallback cbsipCallback);
 
 /**
- * Use IPv6 instead of IPv4.
+ * Use IPv6 instead of IPv4. (global setting)
+ *
+ * DEPRECATED: you MUST use EXOSIP_OPT_ENABLE_IPV6 to configure each
+ * eXosip_t independantly.
+ *
+ * **THIS CODE DOES NOTHING, REPLACE WITH**
+ *
+ * eXosip_set_option(excontext, EXOSIP_OPT_ENABLE_IPV6, &val);
  * 
  * @param ipv6_enable  This paramter should be set to 1 to enable IPv6 mode.
  */

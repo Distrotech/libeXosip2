@@ -92,8 +92,8 @@ _eXosip_reg_init (struct eXosip_t *excontext, eXosip_reg_t ** jr, const char *fr
     memset (firewall_port, '\0', sizeof (firewall_port));
 
     eXosip_guess_localip (excontext, AF_INET, localip, 128);
-    if (excontext->eXtl != NULL && excontext->eXtl->tl_get_masquerade_contact != NULL) {
-      excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+    if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+      excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
     }
 
     osip_MD5Init (&Md5Ctx);

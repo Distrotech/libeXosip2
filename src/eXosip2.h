@@ -392,7 +392,7 @@ extern "C" {
   typedef struct eXosip_t eXosip_t;
 
   struct eXosip_t {
-    struct eXtl_protocol *eXtl;
+    struct eXtl_protocol eXtl_transport;
     void *eXtludp_reserved;
     void *eXtltcp_reserved;
 #ifndef DISABLE_TLS
@@ -436,13 +436,33 @@ extern "C" {
     int dscp;
     int register_with_date;
     int autoanswer_bye;
+    int ipv6_enable;
     char ipv4_for_gateway[256];
     char ipv6_for_gateway[256];
     struct eXosip_dns_cache dns_entries[MAX_EXOSIP_DNS_ENTRY];
     struct eXosip_account_info account_entries[MAX_EXOSIP_ACCOUNT_INFO];
     struct eXosip_http_auth http_auths[MAX_EXOSIP_HTTP_AUTH];
 
+    /* udp pre-config */
+    char udp_firewall_ip[64];
+    char udp_firewall_port[10];
+
+    /* tcp pre-config */
+    char tcp_firewall_ip[64];
+    char tcp_firewall_port[10];
+
+    /* tls pre-config */
+    char tls_firewall_ip[64];
+    char tls_firewall_port[10];
     int tls_verify_client_certificate;
+    eXosip_tls_ctx_t eXosip_tls_ctx_params;
+    char tls_local_cn_name[128];
+    char tls_client_local_cn_name[128];
+
+    /* dtls pre-config */
+    char dtls_firewall_ip[64];
+    char dtls_firewall_port[10];
+
     CbSipCallback cbsipCallback;
   };
 

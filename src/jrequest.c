@@ -83,15 +83,15 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
   char firewall_port[10];
   int len;
 
-  if (excontext->eXtl == NULL)
+  if (excontext->eXtl_transport.enabled <= 0)
     return OSIP_NO_NETWORK;
   if (request == NULL)
     return OSIP_BADPARAMETER;
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
-  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 
   /* search for topmost Via which indicate the transport protocol */
@@ -145,7 +145,7 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
   }
 
   if (locip[0] == '\0') {
-    _eXosip_guess_ip_for_via (excontext, excontext->eXtl->proto_family, locip, 49);
+    _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
     if (locip[0] == '\0') {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
       osip_free (contact);
@@ -153,7 +153,7 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
     }
   }
 
-  if (excontext->eXtl->proto_family == AF_INET6) {
+  if (excontext->eXtl_transport.proto_family == AF_INET6) {
     if (a_from->url->username != NULL) {
       char *tmp2 = __osip_uri_escape_userinfo (a_from->url->username);
 
@@ -193,6 +193,9 @@ _eXosip_request_add_via (struct eXosip_t *excontext, osip_message_t * request, c
   char firewall_ip[65];
   char firewall_port[10];
 
+  if (excontext->eXtl_transport.enabled <= 0)
+    return OSIP_NO_NETWORK;
+
   if (request == NULL)
     return OSIP_BADPARAMETER;
 
@@ -209,8 +212,8 @@ _eXosip_request_add_via (struct eXosip_t *excontext, osip_message_t * request, c
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
-  if (excontext->eXtl != NULL && excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 #ifdef MASQUERADE_VIA
   /* this helps to work with a server that don't handle the
@@ -224,7 +227,7 @@ _eXosip_request_add_via (struct eXosip_t *excontext, osip_message_t * request, c
     snprintf (firewall_port, sizeof (firewall_port), "5060");
   }
 
-  if (excontext->eXtl->proto_family == AF_INET6)
+  if (excontext->eXtl_transport.proto_family == AF_INET6)
     snprintf (tmp, 200, "SIP/2.0/%s [%s]:%s;branch=z9hG4bK%u", excontext->transport, ip, firewall_port, osip_build_random_number ());
   else {
     if (excontext->use_rport != 0)
@@ -261,12 +264,12 @@ _eXosip_generating_request_out_of_dialog (struct eXosip_t *excontext, osip_messa
   if (!method || !*method)
     return OSIP_BADPARAMETER;
 
-  if (excontext->eXtl == NULL)
+  if (excontext->eXtl_transport.enabled <= 0)
     return OSIP_NO_NETWORK;
 
   /*guess the local ip since req uri is known */
   memset (locip, '\0', sizeof (locip));
-  _eXosip_guess_ip_for_via (excontext, excontext->eXtl->proto_family, locip, 49);
+  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
   if (locip[0] == '\0') {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
     return OSIP_NO_NETWORK;
@@ -630,13 +633,13 @@ _eXosip_generating_register (struct eXosip_t *excontext, eXosip_reg_t * jreg, os
   char firewall_ip[65];
   char firewall_port[10];
 
-  if (excontext->eXtl == NULL)
+  if (excontext->eXtl_transport.enabled <= 0)
     return OSIP_NO_NETWORK;
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
-  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 
   i = _eXosip_generating_request_out_of_dialog (excontext, reg, "REGISTER", NULL, transport, from, proxy);
@@ -644,7 +647,7 @@ _eXosip_generating_register (struct eXosip_t *excontext, eXosip_reg_t * jreg, os
     return i;
 
   memset (locip, '\0', sizeof (locip));
-  _eXosip_guess_ip_for_via (excontext, excontext->eXtl->proto_family, locip, 49);
+  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
 
   if (locip[0] == '\0') {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
@@ -850,13 +853,13 @@ _eXosip_build_request_within_dialog (struct eXosip_t *excontext, osip_message_t 
   if (dialog == NULL)
     return OSIP_BADPARAMETER;
 
-  if (excontext->eXtl == NULL)
+  if (excontext->eXtl_transport.enabled <= 0)
     return OSIP_NO_NETWORK;
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
-  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 
   i = osip_message_init (&request);
@@ -873,7 +876,7 @@ _eXosip_build_request_within_dialog (struct eXosip_t *excontext, osip_message_t 
 
 
   memset (locip, '\0', sizeof (locip));
-  _eXosip_guess_ip_for_via (excontext, excontext->eXtl->proto_family, locip, 49);
+  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
   if (locip[0] == '\0') {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
     osip_message_free (request);

@@ -62,10 +62,6 @@ void udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * si
 struct eXtludp {
   int udp_socket;
   struct sockaddr_storage ai_addr;
-
-  char udp_firewall_ip[64];
-  char udp_firewall_port[10];
-
 };
 
 static int
@@ -77,8 +73,6 @@ udp_tl_init (struct eXosip_t *excontext)
     return OSIP_NOMEM;
   reserved->udp_socket = 0;
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
-  memset (reserved->udp_firewall_ip, 0, sizeof (reserved->udp_firewall_ip));
-  memset (reserved->udp_firewall_port, 0, sizeof (reserved->udp_firewall_port));
 
   excontext->eXtludp_reserved = reserved;
   return OSIP_SUCCESS;
@@ -89,8 +83,9 @@ udp_tl_free (struct eXosip_t *excontext)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  memset (reserved->udp_firewall_ip, 0, sizeof (reserved->udp_firewall_ip));
-  memset (reserved->udp_firewall_port, 0, sizeof (reserved->udp_firewall_port));
+  if (reserved==NULL)
+    return OSIP_SUCCESS;
+
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
 #ifdef TSC_SUPPORT
   if (reserved->udp_socket > 0) {
@@ -146,18 +141,23 @@ udp_tl_open (struct eXosip_t *excontext)
   struct addrinfo *curinfo;
   int sock = -1;
 
-  if (eXtl_udp.proto_port < 0)
-    eXtl_udp.proto_port = 5060;
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (excontext->eXtl_transport.proto_port < 0)
+    excontext->eXtl_transport.proto_port = 5060;
 
 
-  res = _eXosip_get_addrinfo (excontext, &addrinfo, eXtl_udp.proto_ifs, eXtl_udp.proto_port, eXtl_udp.proto_num);
+  res = _eXosip_get_addrinfo (excontext, &addrinfo, excontext->eXtl_transport.proto_ifs, excontext->eXtl_transport.proto_port, excontext->eXtl_transport.proto_num);
   if (res)
     return -1;
 
   for (curinfo = addrinfo; curinfo; curinfo = curinfo->ai_next) {
     socklen_t len;
 
-    if (curinfo->ai_protocol && curinfo->ai_protocol != eXtl_udp.proto_num) {
+    if (curinfo->ai_protocol && curinfo->ai_protocol != excontext->eXtl_transport.proto_num) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "eXosip: Skipping protocol %d\n", curinfo->ai_protocol));
       continue;
     }
@@ -217,7 +217,7 @@ udp_tl_open (struct eXosip_t *excontext)
 #endif
 
     if (res < 0) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", eXtl_udp.proto_ifs, curinfo->ai_family, strerror (errno)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (errno)));
 #ifdef TSC_SUPPORT
       if (excontext->tunnel_handle)
       {
@@ -258,10 +258,10 @@ udp_tl_open (struct eXosip_t *excontext)
       memcpy (&reserved->ai_addr, curinfo->ai_addr, curinfo->ai_addrlen);
     }
 #endif
-    if (eXtl_udp.proto_num != IPPROTO_UDP) {
+    if (excontext->eXtl_transport.proto_num != IPPROTO_UDP) {
       res = listen (sock, SOMAXCONN);
       if (res < 0) {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", eXtl_udp.proto_ifs, curinfo->ai_family, strerror (errno)));
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (errno)));
         close (sock);
         sock = -1;
         continue;
@@ -274,23 +274,23 @@ udp_tl_open (struct eXosip_t *excontext)
   _eXosip_freeaddrinfo (addrinfo);
 
   if (sock < 0) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind on port: %i\n", eXtl_udp.proto_port));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind on port: %i\n", excontext->eXtl_transport.proto_port));
     return -1;
   }
 
   reserved->udp_socket = sock;
 
-  _eXosip_transport_set_dscp(excontext, eXtl_udp.proto_family, sock);
+  _eXosip_transport_set_dscp(excontext, excontext->eXtl_transport.proto_family, sock);
 
-  if (eXtl_udp.proto_port == 0) {
+  if (excontext->eXtl_transport.proto_port == 0) {
     /* get port number from socket */
-    if (eXtl_udp.proto_family == AF_INET)
-      eXtl_udp.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
+    if (excontext->eXtl_transport.proto_family == AF_INET)
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
     else
-      eXtl_udp.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Binding on port %i!\n", eXtl_udp.proto_port));
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Binding on port %i!\n", excontext->eXtl_transport.proto_port));
   }
-  snprintf (reserved->udp_firewall_port, sizeof (reserved->udp_firewall_port), "%i", eXtl_udp.proto_port);
+  snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%i", excontext->eXtl_transport.proto_port);
   return OSIP_SUCCESS;
 }
 
@@ -298,6 +298,11 @@ static int
 _udp_tl_reset (struct eXosip_t *excontext)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
   if (reserved->udp_socket > 0)
     close (reserved->udp_socket);
@@ -308,6 +313,11 @@ static int
 udp_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip_wrset, int *fd_max)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
   if (reserved->udp_socket <= 0)
     return -1;
@@ -332,6 +342,10 @@ udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
+  if (reserved==NULL) {
+    return;
+  }
+
   /* EXOSIP_OPT_UDP_LEARN_PORT option set */
   if (excontext->learn_port > 0) {
     osip_via_t *via = NULL;
@@ -339,19 +353,19 @@ udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
     int i;
 
     i = osip_message_get_via (sip, 0, &via);
-    if (i >= 0 && via != NULL && via->protocol != NULL && (osip_strcasecmp (via->protocol, "udp") == 0 || osip_strcasecmp (via->protocol, "dtls-udp") == 0)) {
+    if (i >= 0 && via != NULL && via->protocol != NULL && (osip_strcasecmp (via->protocol, "udp") == 0)) {
       osip_via_param_get_byname (via, "rport", &br);
       if (br != NULL && br->gvalue != NULL) {
         struct eXosip_account_info ainfo;
 
         memset (&ainfo, 0, sizeof (struct eXosip_account_info));
-        snprintf (reserved->udp_firewall_port, sizeof (reserved->udp_firewall_port), "%s", br->gvalue);
+        snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%s", br->gvalue);
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "SIP port modified from rport in SIP answer\r\n"));
 
         osip_via_param_get_byname (via, "received", &br);
         if (br != NULL && br->gvalue != NULL && sip->from != NULL && sip->from->url != NULL && sip->from->url->host != NULL) {
           snprintf (ainfo.proxy, sizeof (ainfo.proxy), "%s", sip->from->url->host);
-          ainfo.nat_port = atoi (reserved->udp_firewall_port);
+          ainfo.nat_port = atoi (excontext->udp_firewall_port);
           snprintf (ainfo.nat_ip, sizeof (ainfo.nat_ip), "%s", br->gvalue);
           eXosip_set_option (excontext, EXOSIP_OPT_ADD_ACCOUNT_INFO, &ainfo);
         }
@@ -368,6 +382,11 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
   char *buf;
   int i;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (reserved->udp_socket <= 0)
     return -1;
 
@@ -375,7 +394,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     struct sockaddr_storage sa;
     socklen_t slen;
 
-    if (eXtl_udp.proto_family == AF_INET)
+    if (excontext->eXtl_transport.proto_family == AF_INET)
       slen = sizeof (struct sockaddr_in);
     else
       slen = sizeof (struct sockaddr_in6);
@@ -406,7 +425,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 
       memset (src6host, 0, sizeof (src6host));
 
-      if (eXtl_udp.proto_family == AF_INET)
+      if (excontext->eXtl_transport.proto_family == AF_INET)
         recvport = ntohs (((struct sockaddr_in *) &sa)->sin_port);
       else
         recvport = ntohs (((struct sockaddr_in6 *) &sa)->sin6_port);
@@ -494,7 +513,7 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
     }
   }
 
-  if (reserved->udp_firewall_ip[0] != '\0') {
+  if (excontext->udp_firewall_ip[0] != '\0') {
 
     while (!osip_list_eol (&req->contacts, pos)) {
       osip_contact_t *co;
@@ -507,13 +526,13 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
 #endif
         ) {
         if (ainfo == NULL) {
-          if (co->url->port == NULL && 0 != osip_strcasecmp (reserved->udp_firewall_port, "5060")) {
-            co->url->port = osip_strdup (reserved->udp_firewall_port);
+          if (co->url->port == NULL && 0 != osip_strcasecmp (excontext->udp_firewall_port, "5060")) {
+            co->url->port = osip_strdup (excontext->udp_firewall_port);
             osip_message_force_update (req);
           }
-          else if (co->url->port != NULL && 0 != osip_strcasecmp (reserved->udp_firewall_port, co->url->port)) {
+          else if (co->url->port != NULL && 0 != osip_strcasecmp (excontext->udp_firewall_port, co->url->port)) {
             osip_free (co->url->port);
-            co->url->port = osip_strdup (reserved->udp_firewall_port);
+            co->url->port = osip_strdup (excontext->udp_firewall_port);
             osip_message_force_update (req);
           }
         }
@@ -565,6 +584,11 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   char ipbuf[INET6_ADDRSTRLEN];
   int i;
   osip_naptr_t *naptr_record = NULL;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
   if (reserved->udp_socket <= 0)
     return -1;
@@ -841,6 +865,11 @@ udp_tl_keepalive (struct eXosip_t *excontext)
   char buf[4] = "jaK";
   eXosip_reg_t *jr;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (excontext->keep_alive <= 0) {
     return 0;
   }
@@ -863,6 +892,11 @@ udp_tl_set_socket (struct eXosip_t *excontext, int socket)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   reserved->udp_socket = socket;
 
   return OSIP_SUCCESS;
@@ -871,18 +905,16 @@ udp_tl_set_socket (struct eXosip_t *excontext, int socket)
 static int
 udp_tl_masquerade_contact (struct eXosip_t *excontext, const char *public_address, int port)
 {
-  struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
-
   if (public_address == NULL || public_address[0] == '\0') {
-    memset (reserved->udp_firewall_ip, '\0', sizeof (reserved->udp_firewall_ip));
-    memset (reserved->udp_firewall_port, '\0', sizeof (reserved->udp_firewall_port));
-    if (eXtl_udp.proto_port > 0)
-      snprintf (reserved->udp_firewall_port, sizeof (reserved->udp_firewall_port), "%i", eXtl_udp.proto_port);
+    memset (excontext->udp_firewall_ip, '\0', sizeof (excontext->udp_firewall_ip));
+    memset (excontext->udp_firewall_port, '\0', sizeof (excontext->udp_firewall_port));
+    if (excontext->eXtl_transport.proto_port > 0)
+      snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%i", excontext->eXtl_transport.proto_port);
     return OSIP_SUCCESS;
   }
-  snprintf (reserved->udp_firewall_ip, sizeof (reserved->udp_firewall_ip), "%s", public_address);
+  snprintf (excontext->udp_firewall_ip, sizeof (excontext->udp_firewall_ip), "%s", public_address);
   if (port > 0) {
-    snprintf (reserved->udp_firewall_port, sizeof (reserved->udp_firewall_port), "%i", port);
+    snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%i", port);
   }
   return OSIP_SUCCESS;
 }
@@ -895,15 +927,20 @@ udp_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_size
   memset (ip, 0, ip_size);
   memset (port, 0, port_size);
 
-  if (reserved->udp_firewall_ip[0] != '\0')
-    snprintf (ip, ip_size, "%s", reserved->udp_firewall_ip);
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
-  if (reserved->udp_firewall_port[0] != '\0')
-    snprintf (port, port_size, "%s", reserved->udp_firewall_port);
+  if (excontext->udp_firewall_ip[0] != '\0')
+    snprintf (ip, ip_size, "%s", excontext->udp_firewall_ip);
+
+  if (excontext->udp_firewall_port[0] != '\0')
+    snprintf (port, port_size, "%s", excontext->udp_firewall_port);
   return OSIP_SUCCESS;
 }
 
-struct eXtl_protocol eXtl_udp = {
+static struct eXtl_protocol eXtl_udp = {
   1,
   5060,
   "UDP",
@@ -925,3 +962,8 @@ struct eXtl_protocol eXtl_udp = {
   &udp_tl_get_masquerade_contact,
   NULL
 };
+
+void
+eXosip_transport_udp_init(struct eXosip_t *excontext) {
+  memcpy(&excontext->eXtl_transport, &eXtl_udp, sizeof(struct eXtl_protocol));
+}

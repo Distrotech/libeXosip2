@@ -191,23 +191,7 @@ _eXosip_snd_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   }
 
   i = -1;
-  if (osip_strcasecmp (via->protocol, "udp") == 0) {
-    i = eXtl_udp.tl_send_message (excontext, tr, sip, host, port, out_socket);
-  }
-  else if (osip_strcasecmp (via->protocol, "tcp") == 0) {
-    i = eXtl_tcp.tl_send_message (excontext, tr, sip, host, port, out_socket);
-  }
-#ifdef HAVE_OPENSSL_SSL_H
-  else if (osip_strcasecmp (via->protocol, "tls") == 0) {
-    i = eXtl_tls.tl_send_message (excontext, tr, sip, host, port, out_socket);
-  }
-  else if (osip_strcasecmp (via->protocol, "dtls-udp") == 0) {
-    i = -1;
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    i = eXtl_dtls.tl_send_message (excontext, tr, sip, host, port, out_socket);
-#endif
-  }
-#endif
+  i = excontext->eXtl_transport.tl_send_message(excontext, tr, sip, host, port, out_socket);
   if (i != 0) {
     return i;
   }

@@ -1510,15 +1510,7 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
 
     FD_ZERO (&osip_fdset);
     FD_ZERO (&osip_wrset);
-    eXtl_udp.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
-    eXtl_tcp.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
-#ifdef HAVE_OPENSSL_SSL_H
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    eXtl_dtls.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
-#endif
-    eXtl_tls.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
-#endif
-
+    excontext->eXtl_transport.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
 #ifndef OSIP_MONOTHREAD
     eXFD_SET (wakeup_socket, &osip_fdset);
     if (wakeup_socket > max)
@@ -1616,14 +1608,7 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
 #endif
     }
     else {
-      eXtl_udp.tl_read_message (excontext, &osip_fdset, &osip_wrset);
-      eXtl_tcp.tl_read_message (excontext, &osip_fdset, &osip_wrset);
-#ifdef HAVE_OPENSSL_SSL_H
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-      eXtl_dtls.tl_read_message (excontext, &osip_fdset, &osip_wrset);
-#endif
-      eXtl_tls.tl_read_message (excontext, &osip_fdset, &osip_wrset);
-#endif
+      excontext->eXtl_transport.tl_read_message (excontext, &osip_fdset, &osip_wrset);
     }
 
     max_message_nb--;

@@ -42,8 +42,6 @@
 #include "inet_ntop.h"
 #endif
 
-int ipv6_enable = 0;
-
 #ifndef OSIP_MONOTHREAD
 static void *_eXosip_thread (void *arg);
 #endif
@@ -54,7 +52,9 @@ static void _eXosip_keep_alive (struct eXosip_t *excontext);
 void
 eXosip_enable_ipv6 (int _ipv6_enable)
 {
-  ipv6_enable = _ipv6_enable;
+  /* obsolete, use:
+  eXosip_set_option(excontext, EXOSIP_OPT_ENABLE_IPV6, &val);
+  */
 }
 
 #endif
@@ -75,14 +75,32 @@ eXosip_set_cbsip_message (struct eXosip_t *excontext, CbSipCallback cbsipCallbac
 void
 eXosip_masquerade_contact (struct eXosip_t *excontext, const char *public_address, int port)
 {
-  eXtl_udp.tl_masquerade_contact (excontext, public_address, port);
-  eXtl_tcp.tl_masquerade_contact (excontext, public_address, port);
-#ifdef HAVE_OPENSSL_SSL_H
-  eXtl_tls.tl_masquerade_contact (excontext, public_address, port);
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-  eXtl_dtls.tl_masquerade_contact (excontext, public_address, port);
-#endif
-#endif
+  if (excontext->eXtl_transport.tl_masquerade_contact==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "no transport protocol selected!\n"));
+    if (public_address == NULL || public_address[0] == '\0') {
+      memset (excontext->udp_firewall_ip, '\0', sizeof (excontext->udp_firewall_ip));
+      memset (excontext->udp_firewall_port, '\0', sizeof (excontext->udp_firewall_port));
+      memset (excontext->tcp_firewall_ip, '\0', sizeof (excontext->tcp_firewall_ip));
+      memset (excontext->tcp_firewall_port, '\0', sizeof (excontext->tcp_firewall_port));
+      memset (excontext->tls_firewall_ip, '\0', sizeof (excontext->tls_firewall_ip));
+      memset (excontext->tls_firewall_port, '\0', sizeof (excontext->tls_firewall_port));
+      memset (excontext->dtls_firewall_ip, '\0', sizeof (excontext->dtls_firewall_ip));
+      memset (excontext->dtls_firewall_port, '\0', sizeof (excontext->dtls_firewall_port));
+      return;
+    }
+    snprintf (excontext->udp_firewall_ip, sizeof (excontext->udp_firewall_ip), "%s", public_address);
+    snprintf (excontext->tcp_firewall_ip, sizeof (excontext->tcp_firewall_ip), "%s", public_address);
+    snprintf (excontext->tls_firewall_ip, sizeof (excontext->tls_firewall_ip), "%s", public_address);
+    snprintf (excontext->dtls_firewall_ip, sizeof (excontext->dtls_firewall_ip), "%s", public_address);
+    if (port > 0) {
+      snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%i", port);
+      snprintf (excontext->tcp_firewall_port, sizeof (excontext->tcp_firewall_port), "%i", port);
+      snprintf (excontext->tls_firewall_port, sizeof (excontext->tls_firewall_port), "%i", port);
+      snprintf (excontext->dtls_firewall_port, sizeof (excontext->dtls_firewall_port), "%i", port);
+    }
+    return;
+  }
+  excontext->eXtl_transport.tl_masquerade_contact (excontext, public_address, port);
   return;
 }
 
@@ -277,14 +295,8 @@ eXosip_quit (struct eXosip_t *excontext)
     }
   }
 
-  eXtl_udp.tl_free (excontext);
-  eXtl_tcp.tl_free (excontext);
-#ifdef HAVE_OPENSSL_SSL_H
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-  eXtl_dtls.tl_free (excontext);
-#endif
-  eXtl_tls.tl_free (excontext);
-#endif
+  if (excontext->eXtl_transport.tl_free!=NULL)
+    excontext->eXtl_transport.tl_free(excontext);
 
   memset (excontext, 0, sizeof (eXosip_t));
   excontext->j_stop_ua = -1;
@@ -295,17 +307,26 @@ eXosip_quit (struct eXosip_t *excontext)
 int
 eXosip_set_socket (struct eXosip_t *excontext, int transport, int socket, int port)
 {
-  excontext->eXtl = NULL;
+  if (excontext->eXtl_transport.enabled > 0) {
+    /* already set */
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: already listening somewhere\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (transport == IPPROTO_UDP) {
-    eXtl_udp.proto_port = port;
-    eXtl_udp.tl_set_socket (excontext, socket);
-    excontext->eXtl = &eXtl_udp;
+    eXosip_transport_udp_init(excontext);
+    if (excontext->eXtl_transport.tl_init!=NULL)
+      excontext->eXtl_transport.tl_init (excontext);
+    excontext->eXtl_transport.proto_port = port;
+    excontext->eXtl_transport.tl_set_socket (excontext, socket);
     snprintf (excontext->transport, sizeof (excontext->transport), "%s", "UDP");
   }
   else if (transport == IPPROTO_TCP) {
-    eXtl_tcp.proto_port = port;
-    eXtl_tcp.tl_set_socket (excontext, socket);
-    excontext->eXtl = &eXtl_tcp;
+    eXosip_transport_tcp_init(excontext);
+    if (excontext->eXtl_transport.tl_init!=NULL)
+      excontext->eXtl_transport.tl_init (excontext);
+    excontext->eXtl_transport.proto_port = port;
+    excontext->eXtl_transport.tl_set_socket (excontext, socket);
     snprintf (excontext->transport, sizeof (excontext->transport), "%s", "TCP");
   }
   else
@@ -345,13 +366,13 @@ eXosip_find_free_port (struct eXosip_t *excontext, int free_port, int transport)
   int count;
 
   for (count = 0; count < 8; count++) {
-    if (ipv6_enable == 0)
+    if (excontext->ipv6_enable==0)
       res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "0.0.0.0", free_port + count * 2, transport);
     else
       res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "::", free_port + count * 2, transport);
     if (res1 != 0)
       return res1;
-    if (ipv6_enable == 0)
+    if (excontext->ipv6_enable == 0)
       res2 = _eXosip_get_addrinfo (excontext, &addrinfo_rtcp, "0.0.0.0", free_port + count * 2 + 1, transport);
     else
       res2 = _eXosip_get_addrinfo (excontext, &addrinfo_rtcp, "::", free_port + count * 2 + 1, transport);
@@ -448,7 +469,7 @@ eXosip_find_free_port (struct eXosip_t *excontext, int free_port, int transport)
   }
 
   /* just get a free port */
-  if (ipv6_enable == 0)
+  if (excontext->ipv6_enable == 0)
     res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "0.0.0.0", 0, transport);
   else
     res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "::", 0, transport);
@@ -524,46 +545,49 @@ int
 eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr, int port, int family, int secure)
 {
   int i = -1;
-  struct eXtl_protocol *eXtl = NULL;
 
-  if (excontext->eXtl != NULL) {
+  if (excontext->eXtl_transport.enabled > 0) {
     /* already set */
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: already listening somewhere\n"));
     return OSIP_WRONG_STATE;
   }
 
   if (transport == IPPROTO_UDP && secure == 0)
-    eXtl = &eXtl_udp;
+    eXosip_transport_udp_init(excontext);
   else if (transport == IPPROTO_TCP && secure == 0)
-    eXtl = &eXtl_tcp;
+    eXosip_transport_tcp_init(excontext);
 #ifdef HAVE_OPENSSL_SSL_H
 #if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
   else if (transport == IPPROTO_UDP)
-    eXtl = &eXtl_dtls;
+    eXosip_transport_dtls_init(excontext);
 #endif
   else if (transport == IPPROTO_TCP)
-    eXtl = &eXtl_tls;
+    eXosip_transport_tls_init(excontext);
 #endif
-
-  if (eXtl == NULL)
+  else 
     return OSIP_BADPARAMETER;
 
-  eXtl->proto_family = family;
-  eXtl->proto_port = port;
+  if (excontext->eXtl_transport.tl_init!=NULL)
+    excontext->eXtl_transport.tl_init (excontext);
+
+  excontext->eXtl_transport.proto_family = family;
+  excontext->eXtl_transport.proto_port = port;
   if (addr != NULL)
-    snprintf (eXtl->proto_ifs, sizeof (eXtl->proto_ifs), "%s", addr);
+    snprintf (excontext->eXtl_transport.proto_ifs, sizeof (excontext->eXtl_transport.proto_ifs), "%s", addr);
 
 #ifdef	AF_INET6
   if (family == AF_INET6 && !addr)
-    snprintf (eXtl->proto_ifs, sizeof (eXtl->proto_ifs), "::0");
+    snprintf (excontext->eXtl_transport.proto_ifs, sizeof (excontext->eXtl_transport.proto_ifs), "::0");
 #endif
 
-  i = eXtl->tl_open (excontext);
+  i = excontext->eXtl_transport.tl_open (excontext);
 
   if (i != 0)
+  {
+    if (excontext->eXtl_transport.tl_free!=NULL)
+      excontext->eXtl_transport.tl_free (excontext);
     return i;
-
-  excontext->eXtl = eXtl;
+  }
 
   if (transport == IPPROTO_UDP && secure == 0)
     snprintf (excontext->transport, sizeof (excontext->transport), "%s", "UDP");
@@ -590,10 +614,8 @@ eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr,
 int eXosip_reset_transports (struct eXosip_t *excontext)
 {
   int i = OSIP_WRONG_STATE;
-  if (excontext->eXtl) {
-    if (excontext->eXtl->tl_reset)
-      i = excontext->eXtl->tl_reset(excontext);
-  }
+  if (excontext->eXtl_transport.tl_reset)
+    i = excontext->eXtl_transport.tl_reset(excontext);
   return i;
 }
 
@@ -705,13 +727,13 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->keep_alive_options = 0;
   excontext->autoanswer_bye = 1;
 
-  eXtl_udp.tl_init (excontext);
-  eXtl_tcp.tl_init (excontext);
+  //eXtl_udp.tl_init (excontext);
+  //eXtl_tcp.tl_init (excontext);
 #ifdef HAVE_OPENSSL_SSL_H
 #if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-  eXtl_dtls.tl_init (excontext);
+  //eXtl_dtls.tl_init (excontext);
 #endif
-  eXtl_tls.tl_init (excontext);
+  //eXtl_tls.tl_init (excontext);
 #endif
   return OSIP_SUCCESS;
 }
@@ -1027,6 +1049,10 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     val = *((int *) value);
     excontext->autoanswer_bye = val;
     break;
+  case EXOSIP_OPT_ENABLE_IPV6:
+    val = *((int *) value);
+    excontext->ipv6_enable = val;
+    break;
   default:
     return OSIP_BADPARAMETER;
   }
@@ -1054,14 +1080,8 @@ _eXosip_keep_alive (struct eXosip_t *excontext)
   osip_gettimeofday (&excontext->mtimer, NULL);
   add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
 
-  eXtl_udp.tl_keepalive (excontext);
-  eXtl_tcp.tl_keepalive (excontext);
-#ifdef HAVE_OPENSSL_SSL_H
-  eXtl_tls.tl_keepalive (excontext);
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-  eXtl_dtls.tl_keepalive (excontext);
-#endif
-#endif
+  if (excontext->eXtl_transport.tl_keepalive!=NULL)
+    excontext->eXtl_transport.tl_keepalive(excontext);
 }
 
 #ifndef OSIP_MONOTHREAD

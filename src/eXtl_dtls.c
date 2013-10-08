@@ -97,9 +97,6 @@ struct eXtldtls {
   int dtls_socket;
   struct sockaddr_storage ai_addr;
 
-  char dtls_firewall_ip[64];
-  char dtls_firewall_port[10];
-
   SSL_CTX *server_ctx;
   SSL_CTX *client_ctx;
   struct _dtls_stream socket_tab[EXOSIP_MAX_SOCKETS];
@@ -117,8 +114,6 @@ dtls_tl_init (struct eXosip_t *excontext)
   reserved->client_ctx = NULL;
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
   memset (&reserved->socket_tab, 0, sizeof (struct _dtls_stream) * EXOSIP_MAX_SOCKETS);
-  memset (reserved->dtls_firewall_ip, 0, sizeof (reserved->dtls_firewall_ip));
-  memset (reserved->dtls_firewall_port, 0, sizeof (reserved->dtls_firewall_port));
 
   memset (&reserved->eXosip_dtls_ctx_params, 0, sizeof (eXosip_tls_ctx_t));
   memset (&reserved->dtls_local_cn_name, 0, sizeof (reserved->dtls_local_cn_name));
@@ -283,6 +278,9 @@ dtls_tl_free (struct eXosip_t *excontext)
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
   int pos;
 
+  if (reserved==NULL)
+    return OSIP_SUCCESS;
+
   if (reserved->server_ctx != NULL)
     SSL_CTX_free (reserved->server_ctx);
 
@@ -297,8 +295,6 @@ dtls_tl_free (struct eXosip_t *excontext)
   }
   memset (&reserved->socket_tab, 0, sizeof (struct _dtls_stream) * EXOSIP_MAX_SOCKETS);
 
-  memset (reserved->dtls_firewall_ip, 0, sizeof (reserved->dtls_firewall_ip));
-  memset (reserved->dtls_firewall_port, 0, sizeof (reserved->dtls_firewall_port));
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
   if (reserved->dtls_socket > 0)
     close (reserved->dtls_socket);
@@ -319,21 +315,26 @@ dtls_tl_open (struct eXosip_t *excontext)
   struct addrinfo *curinfo;
   int sock = -1;
 
-  if (eXtl_dtls.proto_port < 0)
-    eXtl_dtls.proto_port = 5061;
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (excontext->eXtl_transport.proto_port < 0)
+    excontext->eXtl_transport.proto_port = 5061;
 
   /* TODO: allow parameters for DTLS */
   reserved->server_ctx = initialize_server_ctx (excontext, reserved->dtls_local_cn_name, &reserved->eXosip_dtls_ctx_params, IPPROTO_UDP);
   reserved->client_ctx = initialize_client_ctx (excontext, reserved->dtls_client_local_cn_name, &reserved->eXosip_dtls_ctx_params, IPPROTO_UDP);
 
-  res = _eXosip_get_addrinfo (excontext, &addrinfo, eXtl_dtls.proto_ifs, eXtl_dtls.proto_port, eXtl_dtls.proto_num);
+  res = _eXosip_get_addrinfo (excontext, &addrinfo, excontext->eXtl_transport.proto_ifs, excontext->eXtl_transport.proto_port, excontext->eXtl_transport.proto_num);
   if (res)
     return -1;
 
   for (curinfo = addrinfo; curinfo; curinfo = curinfo->ai_next) {
     socklen_t len;
 
-    if (curinfo->ai_protocol && curinfo->ai_protocol != eXtl_dtls.proto_num) {
+    if (curinfo->ai_protocol && curinfo->ai_protocol != excontext->eXtl_transport.proto_num) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "eXosip: Skipping protocol %d\n", curinfo->ai_protocol));
       continue;
     }
@@ -357,7 +358,7 @@ dtls_tl_open (struct eXosip_t *excontext)
 
     res = bind (sock, curinfo->ai_addr, curinfo->ai_addrlen);
     if (res < 0) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", eXtl_dtls.proto_ifs, curinfo->ai_family, strerror (errno)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (errno)));
       close (sock);
       sock = -1;
       continue;
@@ -369,10 +370,10 @@ dtls_tl_open (struct eXosip_t *excontext)
       memcpy (&reserved->ai_addr, curinfo->ai_addr, curinfo->ai_addrlen);
     }
 
-    if (eXtl_dtls.proto_num == IPPROTO_TCP) {
+    if (excontext->eXtl_transport.proto_num == IPPROTO_TCP) {
       res = listen (sock, SOMAXCONN);
       if (res < 0) {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", eXtl_dtls.proto_ifs, curinfo->ai_family, strerror (errno)));
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (errno)));
         close (sock);
         sock = -1;
         continue;
@@ -385,22 +386,22 @@ dtls_tl_open (struct eXosip_t *excontext)
   _eXosip_freeaddrinfo (addrinfo);
 
   if (sock < 0) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind on port: %i\n", eXtl_dtls.proto_port));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind on port: %i\n", excontext->eXtl_transport.proto_port));
     return -1;
   }
 
   reserved->dtls_socket = sock;
 
-  if (eXtl_dtls.proto_port == 0) {
+  if (excontext->eXtl_transport.proto_port == 0) {
     /* get port number from socket */
-    if (eXtl_dtls.proto_family == AF_INET)
-      eXtl_dtls.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
+    if (excontext->eXtl_transport.proto_family == AF_INET)
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
     else
-      eXtl_dtls.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Binding on port %i!\n", eXtl_dtls.proto_port));
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Binding on port %i!\n", excontext->eXtl_transport.proto_port));
   }
 
-  snprintf (reserved->dtls_firewall_port, sizeof (reserved->dtls_firewall_port), "%i", eXtl_dtls.proto_port);
+  snprintf (excontext->dtls_firewall_port, sizeof (excontext->dtls_firewall_port), "%i", excontext->eXtl_transport.proto_port);
   return OSIP_SUCCESS;
 }
 
@@ -411,6 +412,11 @@ static int
 dtls_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip_wrset, int *fd_max)
 {
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
   if (reserved->dtls_socket <= 0)
     return -1;
@@ -432,6 +438,11 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
   int i;
   int enc_buf_len;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (reserved->dtls_socket <= 0)
     return -1;
 
@@ -440,7 +451,7 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
 
     socklen_t slen;
 
-    if (eXtl_dtls.proto_family == AF_INET)
+    if (excontext->eXtl_transport.proto_family == AF_INET)
       slen = sizeof (struct sockaddr_in);
     else
       slen = sizeof (struct sockaddr_in6);
@@ -464,7 +475,7 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
 
       memset (src6host, 0, sizeof (src6host));
 
-      if (eXtl_dtls.proto_family == AF_INET)
+      if (excontext->eXtl_transport.proto_family == AF_INET)
         recvport = ntohs (((struct sockaddr_in *) &sa)->sin_port);
       else
         recvport = ntohs (((struct sockaddr_in6 *) &sa)->sin6_port);
@@ -626,21 +637,21 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
   int pos = 0;
 
-  if (reserved->dtls_firewall_ip != '\0') {
+  if (excontext->dtls_firewall_ip != '\0') {
 
     while (!osip_list_eol (&req->contacts, pos)) {
       osip_contact_t *co;
 
       co = (osip_contact_t *) osip_list_get (&req->contacts, pos);
       pos++;
-      if (co != NULL && co->url != NULL && co->url->host != NULL && 0 == osip_strcasecmp (co->url->host, reserved->dtls_firewall_ip)) {
-        if (co->url->port == NULL && 0 != osip_strcasecmp (reserved->dtls_firewall_port, "5061")) {
-          co->url->port = osip_strdup (reserved->dtls_firewall_port);
+      if (co != NULL && co->url != NULL && co->url->host != NULL && 0 == osip_strcasecmp (co->url->host, excontext->dtls_firewall_ip)) {
+        if (co->url->port == NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, "5061")) {
+          co->url->port = osip_strdup (excontext->dtls_firewall_port);
           osip_message_force_update (req);
         }
-        else if (co->url->port != NULL && 0 != osip_strcasecmp (reserved->dtls_firewall_port, co->url->port)) {
+        else if (co->url->port != NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, co->url->port)) {
           osip_free (co->url->port);
-          co->url->port = osip_strdup (reserved->dtls_firewall_port);
+          co->url->port = osip_strdup (excontext->dtls_firewall_port);
           osip_message_force_update (req);
         }
       }
@@ -671,6 +682,11 @@ dtls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_
   int pos;
   struct _dtls_stream *_dtls_stream_used = NULL;
   BIO *sbio = NULL;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
   if (reserved->dtls_socket <= 0)
     return -1;
@@ -1018,6 +1034,11 @@ dtls_tl_keepalive (struct eXosip_t *excontext)
   char buf[4] = "jaK";
   eXosip_reg_t *jr;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (excontext->keep_alive <= 0) {
     return 0;
   }
@@ -1040,6 +1061,11 @@ dtls_tl_set_socket (struct eXosip_t *excontext, int socket)
 {
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   reserved->dtls_socket = socket;
 
   return OSIP_SUCCESS;
@@ -1048,18 +1074,16 @@ dtls_tl_set_socket (struct eXosip_t *excontext, int socket)
 static int
 dtls_tl_masquerade_contact (struct eXosip_t *excontext, const char *public_address, int port)
 {
-  struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
-
   if (public_address == NULL || public_address[0] == '\0') {
-    memset (reserved->dtls_firewall_ip, '\0', sizeof (reserved->dtls_firewall_ip));
-    memset (reserved->dtls_firewall_port, '\0', sizeof (reserved->dtls_firewall_port));
-    if (eXtl_dtls.proto_port > 0)
-      snprintf (reserved->dtls_firewall_port, sizeof (reserved->dtls_firewall_port), "%i", eXtl_dtls.proto_port);
+    memset (excontext->dtls_firewall_ip, '\0', sizeof (excontext->dtls_firewall_ip));
+    memset (excontext->dtls_firewall_port, '\0', sizeof (excontext->dtls_firewall_port));
+    if (excontext->eXtl_transport.proto_port > 0)
+      snprintf (excontext->dtls_firewall_port, sizeof (excontext->dtls_firewall_port), "%i", excontext->eXtl_transport.proto_port);
     return OSIP_SUCCESS;
   }
-  snprintf (reserved->dtls_firewall_ip, sizeof (reserved->dtls_firewall_ip), "%s", public_address);
+  snprintf (excontext->dtls_firewall_ip, sizeof (excontext->dtls_firewall_ip), "%s", public_address);
   if (port > 0) {
-    snprintf (reserved->dtls_firewall_port, sizeof (reserved->dtls_firewall_port), "%i", port);
+    snprintf (excontext->dtls_firewall_port, sizeof (excontext->dtls_firewall_port), "%i", port);
   }
   return OSIP_SUCCESS;
 }
@@ -1072,11 +1096,16 @@ dtls_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_siz
   memset (ip, 0, ip_size);
   memset (port, 0, port_size);
 
-  if (reserved->dtls_firewall_ip != '\0')
-    snprintf (ip, ip_size, "%s", reserved->dtls_firewall_ip);
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
-  if (reserved->dtls_firewall_port != '\0')
-    snprintf (port, port_size, "%s", reserved->dtls_firewall_port);
+  if (excontext->dtls_firewall_ip != '\0')
+    snprintf (ip, ip_size, "%s", excontext->dtls_firewall_ip);
+
+  if (excontext->dtls_firewall_port != '\0')
+    snprintf (port, port_size, "%s", excontext->dtls_firewall_port);
   return OSIP_SUCCESS;
 }
 
@@ -1102,6 +1131,11 @@ struct eXtl_protocol eXtl_dtls = {
   &dtls_tl_get_masquerade_contact,
   NULL
 };
+
+void
+eXosip_transport_dtls_init(struct eXosip_t *excontext) {
+  memcpy(&excontext->eXtl_transport, &eXtl_dtls, sizeof(struct eXtl_protocol));
+}
 
 #endif
 

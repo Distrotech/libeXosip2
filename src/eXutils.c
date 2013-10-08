@@ -94,8 +94,6 @@
 #include "tsc_control_api.h"
 #endif
 
-extern int ipv6_enable;
-
 #if defined(__arc__)
 #define USE_GETHOSTBYNAME
 #endif
@@ -740,7 +738,7 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
 
   hints.ai_flags = 0;
 
-  if (ipv6_enable)
+  if (excontext->ipv6_enable)
     hints.ai_family = PF_INET6;
   else
     hints.ai_family = PF_INET;  /* ipv4 only support */

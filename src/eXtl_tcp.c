@@ -120,8 +120,6 @@ struct eXtltcp {
   int tcp_socket;
   struct sockaddr_storage ai_addr;
 
-  char tcp_firewall_ip[64];
-  char tcp_firewall_port[10];
   struct _tcp_stream socket_tab[EXOSIP_MAX_SOCKETS];
 };
 
@@ -135,8 +133,6 @@ tcp_tl_init (struct eXosip_t *excontext)
   reserved->tcp_socket = 0;
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
   memset (&reserved->socket_tab, 0, sizeof (struct _tcp_stream) * EXOSIP_MAX_SOCKETS);
-  memset (reserved->tcp_firewall_ip, 0, sizeof (reserved->tcp_firewall_ip));
-  memset (reserved->tcp_firewall_port, 0, sizeof (reserved->tcp_firewall_port));
 
   excontext->eXtltcp_reserved = reserved;
   return OSIP_SUCCESS;
@@ -169,8 +165,9 @@ tcp_tl_free (struct eXosip_t *excontext)
   struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
   int pos;
 
-  memset (reserved->tcp_firewall_ip, 0, sizeof (reserved->tcp_firewall_ip));
-  memset (reserved->tcp_firewall_port, 0, sizeof (reserved->tcp_firewall_port));
+  if (reserved==NULL)
+    return OSIP_SUCCESS;
+
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
   if (reserved->tcp_socket > 0)
     closesocket (reserved->tcp_socket);
@@ -195,18 +192,23 @@ tcp_tl_open (struct eXosip_t *excontext)
   struct addrinfo *curinfo;
   int sock = -1;
 
-  if (eXtl_tcp.proto_port < 0)
-    eXtl_tcp.proto_port = 5060;
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (excontext->eXtl_transport.proto_port < 0)
+    excontext->eXtl_transport.proto_port = 5060;
 
 
-  res = _eXosip_get_addrinfo (excontext, &addrinfo, eXtl_tcp.proto_ifs, eXtl_tcp.proto_port, eXtl_tcp.proto_num);
+  res = _eXosip_get_addrinfo (excontext, &addrinfo, excontext->eXtl_transport.proto_ifs, excontext->eXtl_transport.proto_port, excontext->eXtl_transport.proto_num);
   if (res)
     return -1;
 
   for (curinfo = addrinfo; curinfo; curinfo = curinfo->ai_next) {
     socklen_t len;
 
-    if (curinfo->ai_protocol && curinfo->ai_protocol != eXtl_tcp.proto_num) {
+    if (curinfo->ai_protocol && curinfo->ai_protocol != excontext->eXtl_transport.proto_num) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "Skipping protocol %d\n", curinfo->ai_protocol));
       continue;
     }
@@ -236,7 +238,7 @@ tcp_tl_open (struct eXosip_t *excontext)
 #ifndef DISABLE_MAIN_SOCKET
     res = bind (sock, curinfo->ai_addr, curinfo->ai_addrlen);
     if (res < 0) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind socket node:%s family:%d %s\n", eXtl_tcp.proto_ifs, curinfo->ai_family, strerror (ex_errno)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (ex_errno)));
       closesocket (sock);
       sock = -1;
       continue;
@@ -248,10 +250,10 @@ tcp_tl_open (struct eXosip_t *excontext)
       memcpy (&reserved->ai_addr, curinfo->ai_addr, curinfo->ai_addrlen);
     }
 
-    if (eXtl_tcp.proto_num == IPPROTO_TCP) {
+    if (excontext->eXtl_transport.proto_num == IPPROTO_TCP) {
       res = listen (sock, SOMAXCONN);
       if (res < 0) {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind socket node:%s family:%d %s\n", eXtl_tcp.proto_ifs, curinfo->ai_family, strerror (ex_errno)));
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (ex_errno)));
         closesocket (sock);
         sock = -1;
         continue;
@@ -265,22 +267,22 @@ tcp_tl_open (struct eXosip_t *excontext)
   _eXosip_freeaddrinfo (addrinfo);
 
   if (sock < 0) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind on port: %i\n", eXtl_tcp.proto_port));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Cannot bind on port: %i\n", excontext->eXtl_transport.proto_port));
     return -1;
   }
 
   reserved->tcp_socket = sock;
 
-  if (eXtl_tcp.proto_port == 0) {
+  if (excontext->eXtl_transport.proto_port == 0) {
     /* get port number from socket */
-    if (eXtl_tcp.proto_family == AF_INET)
-      eXtl_tcp.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
+    if (excontext->eXtl_transport.proto_family == AF_INET)
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in *) &reserved->ai_addr)->sin_port);
     else
-      eXtl_tcp.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Binding on port %i!\n", eXtl_tcp.proto_port));
+      excontext->eXtl_transport.proto_port = ntohs (((struct sockaddr_in6 *) &reserved->ai_addr)->sin6_port);
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Binding on port %i!\n", excontext->eXtl_transport.proto_port));
   }
 
-  snprintf (reserved->tcp_firewall_port, sizeof (reserved->tcp_firewall_port), "%i", eXtl_tcp.proto_port);
+  snprintf (excontext->tcp_firewall_port, sizeof (excontext->tcp_firewall_port), "%i", excontext->eXtl_transport.proto_port);
   return OSIP_SUCCESS;
 }
 
@@ -289,6 +291,12 @@ tcp_tl_reset (struct eXosip_t *excontext)
 {
   struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
   int pos;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
     if (reserved->socket_tab[pos].socket>0)
       reserved->socket_tab[pos].invalid=1;
@@ -301,6 +309,11 @@ tcp_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip
 {
   struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
   int pos;
+
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
 #ifndef DISABLE_MAIN_SOCKET
   if (reserved->tcp_socket <= 0)
@@ -495,6 +508,11 @@ tcp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
   struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
   int pos = 0;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (FD_ISSET (reserved->tcp_socket, osip_fdset)) {
     /* accept incoming connection */
     char src6host[NI_MAXHOST];
@@ -505,7 +523,7 @@ tcp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 
     socklen_t slen;
 
-    if (eXtl_tcp.proto_family == AF_INET)
+    if (excontext->eXtl_transport.proto_family == AF_INET)
       slen = sizeof (struct sockaddr_in);
     else
       slen = sizeof (struct sockaddr_in6);
@@ -557,12 +575,12 @@ tcp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 
       memset (src6host, 0, sizeof (src6host));
 
-      if (eXtl_tcp.proto_family == AF_INET)
+      if (excontext->eXtl_transport.proto_family == AF_INET)
         recvport = ntohs (((struct sockaddr_in *) &sa)->sin_port);
       else
         recvport = ntohs (((struct sockaddr_in6 *) &sa)->sin6_port);
 
-      _eXosip_transport_set_dscp(excontext, eXtl_tcp.proto_family, sock);
+      _eXosip_transport_set_dscp(excontext, excontext->eXtl_transport.proto_family, sock);
 
 #if defined(__arc__)
       {
@@ -927,7 +945,7 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
     }
 #endif
 
-    _eXosip_transport_set_dscp(excontext, eXtl_tcp.proto_family, sock);
+    _eXosip_transport_set_dscp(excontext, excontext->eXtl_transport.proto_family, sock);
 
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s , socket %d, family:%d set to non blocking mode\n", host, sock, curinfo->ai_family));
     res = connect (sock, curinfo->ai_addr, curinfo->ai_addrlen);
@@ -1151,6 +1169,11 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   int pos = -1;
   osip_naptr_t *naptr_record = NULL;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (host == NULL) {
     host = sip->req_uri->host;
     if (sip->req_uri->port != NULL)
@@ -1267,7 +1290,7 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
         if (reserved->socket_tab[pos].socket == out_socket) {
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "reusing REQUEST connection (to dest=%s:%i)\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port));
           _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
-          if (reserved->tcp_firewall_ip[0] != '\0')
+          if (excontext->tcp_firewall_ip[0] != '\0')
             _tcp_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
           break;
         }
@@ -1309,7 +1332,7 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     if (pos >= 0) {
       out_socket = reserved->socket_tab[pos].socket;
       _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
-      if (reserved->tcp_firewall_ip[0] != '\0')
+      if (excontext->tcp_firewall_ip[0] != '\0')
         _tcp_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
     }
   }
@@ -1443,6 +1466,11 @@ tcp_tl_keepalive (struct eXosip_t *excontext)
   int pos;
   int i;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   if (reserved->tcp_socket <= 0)
     return OSIP_UNDEFINED_ERROR;
 
@@ -1527,6 +1555,11 @@ tcp_tl_set_socket (struct eXosip_t *excontext, int socket)
 {
   struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
 
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
   reserved->tcp_socket = socket;
 
   return OSIP_SUCCESS;
@@ -1535,18 +1568,16 @@ tcp_tl_set_socket (struct eXosip_t *excontext, int socket)
 static int
 tcp_tl_masquerade_contact (struct eXosip_t *excontext, const char *public_address, int port)
 {
-  struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
-
   if (public_address == NULL || public_address[0] == '\0') {
-    memset (reserved->tcp_firewall_ip, '\0', sizeof (reserved->tcp_firewall_ip));
-    memset (reserved->tcp_firewall_port, '\0', sizeof (reserved->tcp_firewall_port));
-    if (eXtl_tcp.proto_port > 0)
-      snprintf (reserved->tcp_firewall_port, sizeof (reserved->tcp_firewall_port), "%i", eXtl_tcp.proto_port);
+    memset (excontext->tcp_firewall_ip, '\0', sizeof (excontext->tcp_firewall_ip));
+    memset (excontext->tcp_firewall_port, '\0', sizeof (excontext->tcp_firewall_port));
+    if (excontext->eXtl_transport.proto_port > 0)
+      snprintf (excontext->tcp_firewall_port, sizeof (excontext->tcp_firewall_port), "%i", excontext->eXtl_transport.proto_port);
     return OSIP_SUCCESS;
   }
-  snprintf (reserved->tcp_firewall_ip, sizeof (reserved->tcp_firewall_ip), "%s", public_address);
+  snprintf (excontext->tcp_firewall_ip, sizeof (excontext->tcp_firewall_ip), "%s", public_address);
   if (port > 0) {
-    snprintf (reserved->tcp_firewall_port, sizeof (reserved->tcp_firewall_port), "%i", port);
+    snprintf (excontext->tcp_firewall_port, sizeof (excontext->tcp_firewall_port), "%i", port);
   }
   return OSIP_SUCCESS;
 }
@@ -1559,11 +1590,16 @@ tcp_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_size
   memset (ip, 0, ip_size);
   memset (port, 0, port_size);
 
-  if (reserved->tcp_firewall_ip[0] != '\0')
-    snprintf (ip, ip_size, "%s", reserved->tcp_firewall_ip);
+  if (reserved==NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
 
-  if (reserved->tcp_firewall_port[0] != '\0')
-    snprintf (port, port_size, "%s", reserved->tcp_firewall_port);
+  if (excontext->tcp_firewall_ip[0] != '\0')
+    snprintf (ip, ip_size, "%s", excontext->tcp_firewall_ip);
+
+  if (excontext->tcp_firewall_port[0] != '\0')
+    snprintf (port, port_size, "%s", excontext->tcp_firewall_port);
   return OSIP_SUCCESS;
 }
 
@@ -1589,3 +1625,8 @@ struct eXtl_protocol eXtl_tcp = {
   &tcp_tl_get_masquerade_contact,
   &tcp_tl_reset
 };
+
+void
+eXosip_transport_tcp_init(struct eXosip_t *excontext) {
+  memcpy(&excontext->eXtl_transport, &eXtl_tcp, sizeof(struct eXtl_protocol));
+}

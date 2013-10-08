@@ -203,12 +203,12 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
-  if (excontext->eXtl->tl_get_masquerade_contact != NULL) {
-    excontext->eXtl->tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
   }
 
   memset (locip, '\0', sizeof (locip));
-  _eXosip_guess_ip_for_via (excontext, excontext->eXtl->proto_family, locip, 49);
+  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
 
   if (request->to->url->username == NULL)
     snprintf (contact, 1000, "<sip:%s:%s>", locip, firewall_port);
