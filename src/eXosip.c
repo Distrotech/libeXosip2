@@ -1245,18 +1245,14 @@ _eXosip_add_authentication_information (struct eXosip_t *excontext, osip_message
           return i;
 
         http_auth->iNonceCount++;
-        if (http_auth->answer_code == 401)
-          /*osip_strcasecmp(req->sip_method, "REGISTER")==0) */
-          i = _eXosip_create_authorization_header (http_auth->wa, uri, authinfo->userid, authinfo->passwd, authinfo->ha1, &aut, req->sip_method, http_auth->pszCNonce, http_auth->iNonceCount);
-        else
-          i = _eXosip_create_proxy_authorization_header (http_auth->wa, uri, authinfo->userid, authinfo->passwd, authinfo->ha1, &aut, req->sip_method, http_auth->pszCNonce, http_auth->iNonceCount);
+        i = _eXosip_create_proxy_authorization_header (http_auth->wa, uri, authinfo->userid, authinfo->passwd, authinfo->ha1, &aut, req->sip_method, http_auth->pszCNonce, http_auth->iNonceCount);
 
         osip_free (uri);
         if (i != 0)
           return i;
 
         if (aut != NULL) {
-          if (osip_strcasecmp (req->sip_method, "REGISTER") == 0)
+          if (http_auth->answer_code == 401)
             osip_list_add (&req->authorizations, aut, -1);
           else
             osip_list_add (&req->proxy_authorizations, aut, -1);
@@ -1289,7 +1285,7 @@ _eXosip_add_authentication_information (struct eXosip_t *excontext, osip_message
     if (i != 0)
       return i;
 
-    i = _eXosip_create_authorization_header (wwwauth, uri, authinfo->userid, authinfo->passwd, authinfo->ha1, &aut, req->sip_method, "0a4f113b", 1);
+    i = _eXosip_create_proxy_authorization_header (wwwauth, uri, authinfo->userid, authinfo->passwd, authinfo->ha1, &aut, req->sip_method, "0a4f113b", 1);
     osip_free (uri);
     if (i != 0)
       return i;
