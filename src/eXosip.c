@@ -846,20 +846,37 @@ eXosip_automatic_action (struct eXosip_t *excontext)
             else if ((jd->d_session_timer_start + jd->d_session_timer_length) - now < (jd->d_session_timer_length / 2)) {
               osip_message_t *request = NULL;
 
+              if (jd->d_session_timer_use_update==1) {
+                eXosip_call_build_update (excontext, jd->d_id, &request);
+                if (request != NULL) {
+                  char session_exp[32];
+                  int i;
 
-              eXosip_call_build_update (excontext, jd->d_id, &request);
-              if (request != NULL) {
-                char session_exp[32];
-                int i;
+                  memset (session_exp, 0, sizeof (session_exp));
+                  snprintf (session_exp, sizeof (session_exp) - 1, "%i;refresher=uac", jd->d_session_timer_length);
+                  osip_message_set_header (request, "Session-Expires", session_exp);
+                  osip_message_set_supported (request, "timer");
+                  i = eXosip_call_send_request (excontext, jd->d_id, request);
+                  if (i == 0) {
+                    /* update timer */
+                    jd->d_session_timer_start = osip_getsystemtime (NULL) + jd->d_session_timer_length;
+                  }
+                }
+              } else {
+                eXosip_call_build_request (excontext, jd->d_id, "INVITE", &request);
+                if (request != NULL) {
+                  char session_exp[32];
+                  int i;
 
-                memset (session_exp, 0, sizeof (session_exp));
-                snprintf (session_exp, sizeof (session_exp) - 1, "%i;refresher=uac", jd->d_session_timer_length);
-                osip_message_set_header (request, "Session-Expires", session_exp);
-                osip_message_set_supported (request, "timer");
-                i = eXosip_call_send_request (excontext, jd->d_id, request);
-                if (i == 0) {
-                  /* update timer */
-                  jd->d_session_timer_start = osip_getsystemtime (NULL) + jd->d_session_timer_length;
+                  memset (session_exp, 0, sizeof (session_exp));
+                  snprintf (session_exp, sizeof (session_exp) - 1, "%i;refresher=uac", jd->d_session_timer_length);
+                  osip_message_set_header (request, "Session-Expires", session_exp);
+                  osip_message_set_supported (request, "timer");
+                  i = eXosip_call_send_request (excontext, jd->d_id, request);
+                  if (i == 0) {
+                    /* update timer */
+                    jd->d_session_timer_start = osip_getsystemtime (NULL) + jd->d_session_timer_length;
+                  }
                 }
               }
             }
@@ -1409,4 +1426,22 @@ _eXosip_mark_all_registrations_expired (struct eXosip_t *excontext)
   if (wakeup) {
     _eXosip_wakeup (excontext);
   }
+}
+
+int
+_eXosip_check_allow_header(eXosip_dialog_t *jd, osip_message_t *message)
+{
+  int i;
+  for (i=0;!osip_list_eol(&message->allows, i);i++) {
+    osip_allow_t *dest = (osip_allow_t*)osip_list_get(&message->allows, i);
+    if (dest==NULL)
+      return -1;
+    if (dest->value==NULL)
+      continue;
+    if (osip_strcasecmp(dest->value, "UPDATE")==0) {
+      jd->d_session_timer_use_update = 1;
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Allow header contains UPDATE\n"));
+    }
+  }
+  return 0;
 }

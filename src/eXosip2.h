@@ -215,6 +215,7 @@ extern "C" {
     time_t d_session_timer_start;       /* session-timer helper */
     int d_session_timer_length;
     int d_refresher;
+    int d_session_timer_use_update;
 
     time_t d_timer;
     int d_count;
@@ -488,6 +489,7 @@ extern "C" {
   int _eXosip_request_add_via (struct eXosip_t *excontext, osip_message_t * request, const char *transport, const char *locip);
 
   void _eXosip_mark_all_registrations_expired (struct eXosip_t *excontext);
+  int _eXosip_check_allow_header(eXosip_dialog_t *jd, osip_message_t *message);
 
   int _eXosip_add_authentication_information (struct eXosip_t *excontext, osip_message_t * req, osip_message_t * last_response);
   int _eXosip_reg_find (struct eXosip_t *excontext, eXosip_reg_t ** reg, osip_transaction_t * tr);

@@ -777,16 +777,6 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
     return OSIP_BADPARAMETER;
   }
 
-  if (0 == osip_strcasecmp (tr->orig_request->sip_method, "INVITE")) {
-    if (MSG_IS_STATUS_2XX (answer) && jd != NULL) {
-      if (status >= 200 && status < 300 && jd != NULL) {
-        _eXosip_dialog_set_200ok (jd, answer);
-        /* wait for a ACK */
-        osip_dialog_set_state (jd->d_dialog, DIALOG_CONFIRMED);
-      }
-    }
-  }
-
   if (0 == osip_strcasecmp (tr->orig_request->sip_method, "INVITE")
       || 0 == osip_strcasecmp (tr->orig_request->sip_method, "UPDATE")) {
     if (MSG_IS_STATUS_2XX (answer) && jd != NULL) {
@@ -799,7 +789,7 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
       while (i >= 0) {
         if (supported == NULL)
           break;
-        if (supported->hvalue != NULL && osip_strcasecmp (supported->hvalue, "timer") == 0) {
+        if (supported->hvalue != NULL && strstr (supported->hvalue, "timer") != NULL) {
           /*found */
           break;
         }
@@ -867,7 +857,7 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
             while (i >= 0) {
               if (supported == NULL)
                 break;
-              if (supported->hvalue != NULL && osip_strcasecmp (supported->hvalue, "timer") == 0) {
+              if (supported->hvalue != NULL && strstr (supported->hvalue, "timer") != NULL) {
                 /*found */
                 break;
               }
@@ -879,6 +869,16 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
             }
           }
         }
+      }
+    }
+  }
+
+  if (0 == osip_strcasecmp (tr->orig_request->sip_method, "INVITE")) {
+    if (MSG_IS_STATUS_2XX (answer) && jd != NULL) {
+      if (status >= 200 && status < 300 && jd != NULL) {
+        _eXosip_dialog_set_200ok (jd, answer);
+        /* wait for a ACK */
+        osip_dialog_set_state (jd->d_dialog, DIALOG_CONFIRMED);
       }
     }
   }

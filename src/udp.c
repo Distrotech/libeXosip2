@@ -469,6 +469,8 @@ _eXosip_process_new_invite (struct eXosip_t *excontext, osip_transaction_t * tra
     osip_message_free (answer);
     return;
   }
+  _eXosip_check_allow_header(jd, evt->sip);
+
   ADD_ELEMENT (jc->c_dialogs, jd);
 
   osip_transaction_set_reserved2 (transaction, jc);

@@ -628,10 +628,12 @@ cb_rcv1xx (int type, osip_transaction_t * tr, osip_message_t * sip)
 
     if (jd != NULL && MSG_IS_RESPONSE_FOR (sip, "INVITE")
         && sip->status_code < 180) {
+      _eXosip_check_allow_header(jd, sip);
       _eXosip_report_call_event (excontext, EXOSIP_CALL_PROCEEDING, jc, jd, tr);
     }
     else if (jd != NULL && MSG_IS_RESPONSE_FOR (sip, "INVITE")
              && sip->status_code >= 180) {
+      _eXosip_check_allow_header(jd, sip);
       _eXosip_report_call_event (excontext, EXOSIP_CALL_RINGING, jc, jd, tr);
     }
 #ifndef MINISIZE
@@ -734,6 +736,8 @@ cb_rcv2xx_4invite (osip_transaction_t * tr, osip_message_t * sip)
   if (jd != NULL) {
     osip_header_t *se_exp = NULL;
     osip_header_t *se_exp_answer = NULL;
+
+    _eXosip_check_allow_header(jd, sip);
 
     osip_message_header_get_byname (tr->orig_request, "session-expires", 0, &se_exp);
     if (se_exp == NULL)
@@ -1016,6 +1020,10 @@ cb_rcv2xx (int type, osip_transaction_t * tr, osip_message_t * sip)
       _eXosip_report_call_event (excontext, EXOSIP_CALL_MESSAGE_ANSWERED, jc, jd, tr);
       return;
     }
+
+    if (jd!=NULL)
+      _eXosip_check_allow_header(jd, sip);
+
     if (MSG_IS_RESPONSE_FOR (sip, "UPDATE")) {
       if (jd != NULL) {
         osip_header_t *se_exp = NULL;
