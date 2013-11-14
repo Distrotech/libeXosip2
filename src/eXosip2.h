@@ -189,11 +189,7 @@ extern "C" {
 #endif
 
   void _eXosip_update (struct eXosip_t *excontext);
-#ifndef OSIP_MONOTHREAD
   void _eXosip_wakeup (struct eXosip_t *excontext);
-#else
-#define _eXosip_wakeup(A)  ;
-#endif
 
 #ifndef DEFINE_SOCKADDR_STORAGE
 #define __eXosip_sockaddr sockaddr_storage

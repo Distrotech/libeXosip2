@@ -333,11 +333,7 @@ extern "C" {
  * 
  * @param excontext    eXosip_t instance.
  */
-#ifndef OSIP_MONOTHREAD
   void eXosip_wakeup_event (struct eXosip_t *excontext);
-#else
-#define eXosip_wakeup_event(A)   ;
-#endif
 
 #endif
 
