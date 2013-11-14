@@ -224,7 +224,7 @@ extern "C" {
 
     osip_list_t *d_inc_trs;
     osip_list_t *d_out_trs;
-    int d_retry;                /* avoid too many unsuccessfull retry */
+    int d_retry;                /* avoid too many unsuccessful retry */
     int d_mincseq;              /* remember cseq after PRACK and UPDATE during setup */
 
     eXosip_dialog_t *next;
@@ -239,7 +239,7 @@ extern "C" {
     eXosip_dialog_t *c_dialogs;
     osip_transaction_t *c_inc_tr;
     osip_transaction_t *c_out_tr;
-    int c_retry;                /* avoid too many unsuccessfull retry */
+    int c_retry;                /* avoid too many unsuccessful retry */
     void *external_reference;
 
     time_t expire_time;
@@ -266,7 +266,7 @@ extern "C" {
     char r_qvalue[16];          /* the q value used for routing */
 
     osip_transaction_t *r_last_tr;
-    int r_retry;                /* avoid too many unsuccessfull retry */
+    int r_retry;                /* avoid too many unsuccessful retry */
 
     struct __eXosip_sockaddr addr;
     int len;
@@ -288,7 +288,7 @@ extern "C" {
     int s_reg_period;
     eXosip_dialog_t *s_dialogs;
 
-    int s_retry;                /* avoid too many unsuccessfull retry */
+    int s_retry;                /* avoid too many unsuccessful retry */
     osip_transaction_t *s_inc_tr;
     osip_transaction_t *s_out_tr;
 
