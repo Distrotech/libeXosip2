@@ -1815,7 +1815,6 @@ _tls_tl_check_connected (struct eXosip_t *excontext)
 static int
 _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sockinfo)
 {
-  struct eXtltls *reserved = (struct eXtltls *) excontext->eXtltls_reserved;
   X509 *cert;
   BIO *sbio;
   int res;
