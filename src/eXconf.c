@@ -727,14 +727,6 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->keep_alive_options = 0;
   excontext->autoanswer_bye = 1;
 
-  //eXtl_udp.tl_init (excontext);
-  //eXtl_tcp.tl_init (excontext);
-#ifdef HAVE_OPENSSL_SSL_H
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-  //eXtl_dtls.tl_init (excontext);
-#endif
-  //eXtl_tls.tl_init (excontext);
-#endif
   return OSIP_SUCCESS;
 }
 

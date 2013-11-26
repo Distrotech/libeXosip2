@@ -779,7 +779,7 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
     }
   }
 
-   // only one address (?)
+   /* only one address (?) */
    if (excontext->tunnel_handle)
      {
        (*addrinfo)->ai_next = 0;

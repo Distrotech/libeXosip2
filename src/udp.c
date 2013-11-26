@@ -1006,8 +1006,9 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
 
       old_trn = _eXosip_find_last_inc_transaction (jc, jd, "BYE");
 
-      if (old_trn != NULL) {    /* && old_trn->state!=NIST_TERMINATED) *//* this situation should NEVER occur?? (we can't receive
-                                   two different BYE for one call! */
+      if (old_trn != NULL) {
+        /* && old_trn->state!=NIST_TERMINATED) */
+        /* this situation should NEVER occur?? (we can't receive two different BYE for one call! */
         osip_list_add (&excontext->j_transactions, transaction, 0);
         _eXosip_send_default_answer (excontext, jd, transaction, evt, 500, "Call Already Terminated", "A pending BYE has already terminate this call", __LINE__);
         return;
