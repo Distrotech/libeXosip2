@@ -634,7 +634,6 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
 static int
 eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
 {
-  struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
   int pos = 0;
 
   if (excontext->dtls_firewall_ip != '\0') {

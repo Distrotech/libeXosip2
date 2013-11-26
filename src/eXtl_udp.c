@@ -483,7 +483,6 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 static int
 eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
 {
-  struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
   int pos = 0;
 
   struct eXosip_account_info *ainfo = NULL;
