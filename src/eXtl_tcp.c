@@ -936,12 +936,16 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
       setsockopt (sock, SOL_SOCKET, SO_NOSIGPIPE, (void *) &val, sizeof (int));
 #endif
 
+    }
+#endif
+
 #if TCP_NODELAY
+    {
+      int val;
       val = 1;
       if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, (char *) &val, sizeof (int)) != 0) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Cannot set socket flag (TCP_NODELAY)\n"));
       }
-#endif
     }
 #endif
 
