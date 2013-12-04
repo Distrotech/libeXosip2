@@ -717,68 +717,30 @@ _tcp_tl_check_connected (struct eXosip_t *excontext)
     }
 
     if (reserved->socket_tab[pos].socket > 0 && reserved->socket_tab[pos].ai_addrlen > 0) {
-      res = connect (reserved->socket_tab[pos].socket, &reserved->socket_tab[pos].ai_addr, reserved->socket_tab[pos].ai_addrlen);
-      if (res < 0) {
-        int status = ex_errno;
-
-#if defined(_WIN32_WCE) || defined(WIN32)
-        if (status == WSAEISCONN) {
-          reserved->socket_tab[pos].ai_addrlen = 0;     /* already connected */
-          continue;
-        }
-#else
-        if (status == EISCONN) {
-          reserved->socket_tab[pos].ai_addrlen = 0;     /* already connected */
-          continue;
-        }
-#endif
-#if defined(_WIN32_WCE) || defined(WIN32)
-        if (status != WSAEWOULDBLOCK && status != WSAEALREADY && status != WSAEINVAL) {
-#else
-        if (status != EINPROGRESS && status != EALREADY) {
-#endif
-          OSIP_TRACE (osip_trace
-                      (__FILE__, __LINE__, OSIP_INFO2, NULL,
-                       "_tcp_tl_check_connected: Cannot connect socket node:%s:%i, socket %d [pos=%d], family:%d, %s[%d]\n",
-                       reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family, strerror (status), status));
-          _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
-          continue;
-        }
-        else {
-          res = _tcp_tl_is_connected (reserved->socket_tab[pos].socket);
-          if (res > 0) {
-            OSIP_TRACE (osip_trace
-                        (__FILE__, __LINE__, OSIP_INFO2, NULL,
-                         "_tcp_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, in progress\n",
-                         reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
-            continue;
-          }
-          else if (res == 0) {
-            OSIP_TRACE (osip_trace
-                        (__FILE__, __LINE__, OSIP_INFO1, NULL,
-                         "_tcp_tl_check_connected: socket node:%s:%i , socket %d [pos=%d], family:%d, connected\n",
-                         reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
-            /* stop calling "connect()" */
-            reserved->socket_tab[pos].ai_addrlen = 0;
-            continue;
-          }
-          else {
-            OSIP_TRACE (osip_trace
-                        (__FILE__, __LINE__, OSIP_INFO2, NULL,
-                         "_tcp_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, error\n",
-                         reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
-            _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
-            continue;
-          }
-        }
+      res = _tcp_tl_is_connected (reserved->socket_tab[pos].socket);
+      if (res > 0) {
+        OSIP_TRACE (osip_trace
+          (__FILE__, __LINE__, OSIP_INFO2, NULL,
+          "_tcp_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, in progress\n",
+          reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
+        continue;
+      }
+      else if (res == 0) {
+        OSIP_TRACE (osip_trace
+          (__FILE__, __LINE__, OSIP_INFO1, NULL,
+          "_tcp_tl_check_connected: socket node:%s:%i , socket %d [pos=%d], family:%d, connected\n",
+          reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
+        /* stop calling "connect()" */
+        reserved->socket_tab[pos].ai_addrlen = 0;
+        continue;
       }
       else {
         OSIP_TRACE (osip_trace
-                    (__FILE__, __LINE__, OSIP_INFO1, NULL,
-                     "_tcp_tl_check_connected: socket node:%s:%i , socket %d [pos=%d], family:%d, connected (with connect)\n",
-                     reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
-        /* stop calling "connect()" */
-        reserved->socket_tab[pos].ai_addrlen = 0;
+          (__FILE__, __LINE__, OSIP_INFO2, NULL,
+          "_tcp_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, error\n",
+          reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos, reserved->socket_tab[pos].ai_addr.sa_family));
+        _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+        continue;
       }
     }
   }
@@ -988,6 +950,8 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
           CFWriteStreamOpen (reserved->socket_tab[pos].writeStream);
 #endif
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket node:%s , socket %d [pos=%d], family:%d, connected\n", host, sock, pos, curinfo->ai_family));
+          selected_ai_addrlen = 0;
+          memcpy (&selected_ai_addr, curinfo->ai_addr, sizeof (struct sockaddr));
           break;
         }
         else {
