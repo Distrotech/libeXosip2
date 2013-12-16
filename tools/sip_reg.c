@@ -264,14 +264,7 @@ main (int argc, char *argv[])
   }
 #ifndef _WIN32_WCE
   if (!nofork) {
-    int cpid = fork ();
-
-    if (cpid)                   /* parent */
-      exit (0);
-    /* child */
-    close (0);
-    close (1);
-    close (2);
+    daemon(1, 0);
   }
 #endif
 
