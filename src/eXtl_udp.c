@@ -83,15 +83,15 @@ udp_tl_free (struct eXosip_t *excontext)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  if (reserved==NULL)
+  if (reserved == NULL)
     return OSIP_SUCCESS;
 
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
 #ifdef TSC_SUPPORT
   if (reserved->udp_socket > 0) {
     if (excontext->tunnel_handle) {
-      tsc_close(reserved->udp_socket);
-      reserved->udp_socket=0;
+      tsc_close (reserved->udp_socket);
+      reserved->udp_socket = 0;
     }
   }
 #endif
@@ -110,7 +110,7 @@ udp_tl_free (struct eXosip_t *excontext)
 #endif
 
 int
-_eXosip_transport_set_dscp(struct eXosip_t *excontext, int family, int sock)
+_eXosip_transport_set_dscp (struct eXosip_t *excontext, int family, int sock)
 {
   int res;
 
@@ -119,10 +119,12 @@ _eXosip_transport_set_dscp(struct eXosip_t *excontext, int family, int sock)
 
   if (family == AF_INET) {
     int tos = (excontext->dscp << 2) & 0xFC;
+
     res = setsockopt (sock, IPPROTO_IP, IP_TOS, (SOCKET_OPTION_VALUE) & tos, sizeof (tos));
   }
   else {
     int tos = (excontext->dscp << 2) & 0xFC;
+
 #ifdef IPV6_TCLASS
     res = setsockopt (sock, IPPROTO_IPV6, IPV6_TCLASS, (SOCKET_OPTION_VALUE) & tos, sizeof (tos));
 #else
@@ -141,7 +143,7 @@ udp_tl_open (struct eXosip_t *excontext)
   struct addrinfo *curinfo;
   int sock = -1;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -163,10 +165,10 @@ udp_tl_open (struct eXosip_t *excontext)
     }
 
 #ifdef TSC_SUPPORT
-    if (excontext->tunnel_handle)
-    {
+    if (excontext->tunnel_handle) {
       sock = (int) tsc_socket (excontext->tunnel_handle, curinfo->ai_family, curinfo->ai_socktype, curinfo->ai_protocol);
-    } else {
+    }
+    else {
       sock = (int) socket (curinfo->ai_family, curinfo->ai_socktype, curinfo->ai_protocol);
     }
 #else
@@ -198,18 +200,17 @@ udp_tl_open (struct eXosip_t *excontext)
 #endif
 
 #ifdef TSC_SUPPORT
-    if (excontext->tunnel_handle)
-    {
+    if (excontext->tunnel_handle) {
       tsc_config config;
       struct sockaddr_in *addr;
-      tsc_get_config(excontext->tunnel_handle, &config);
 
-      addr = (struct sockaddr_in *)(curinfo->ai_addr);
-      addr->sin_addr.s_addr = htonl(config.internal_address.address);
+      tsc_get_config (excontext->tunnel_handle, &config);
+
+      addr = (struct sockaddr_in *) (curinfo->ai_addr);
+      addr->sin_addr.s_addr = htonl (config.internal_address.address);
       res = tsc_bind (sock, curinfo->ai_addr, curinfo->ai_addrlen);
     }
-    else
-    {
+    else {
       res = bind (sock, curinfo->ai_addr, curinfo->ai_addrlen);
     }
 #else
@@ -219,12 +220,10 @@ udp_tl_open (struct eXosip_t *excontext)
     if (res < 0) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, curinfo->ai_family, strerror (errno)));
 #ifdef TSC_SUPPORT
-      if (excontext->tunnel_handle)
-      {
+      if (excontext->tunnel_handle) {
         tsc_close (sock);
       }
-      else
-      {
+      else {
         close (sock);
       }
 #else
@@ -242,7 +241,8 @@ udp_tl_open (struct eXosip_t *excontext)
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Cannot get socket name (%s)\n", strerror (errno)));
         memcpy (&reserved->ai_addr, curinfo->ai_addr, curinfo->ai_addrlen);
       }
-    } else {
+    }
+    else {
       len = sizeof (reserved->ai_addr);
       res = getsockname (sock, (struct sockaddr *) &reserved->ai_addr, &len);
       if (res != 0) {
@@ -280,7 +280,7 @@ udp_tl_open (struct eXosip_t *excontext)
 
   reserved->udp_socket = sock;
 
-  _eXosip_transport_set_dscp(excontext, excontext->eXtl_transport.proto_family, sock);
+  _eXosip_transport_set_dscp (excontext, excontext->eXtl_transport.proto_family, sock);
 
   if (excontext->eXtl_transport.proto_port == 0) {
     /* get port number from socket */
@@ -299,7 +299,7 @@ _udp_tl_reset (struct eXosip_t *excontext)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -314,7 +314,7 @@ udp_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -323,10 +323,9 @@ udp_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip
     return -1;
 
 #ifdef TSC_SUPPORT
-  if (!excontext->tunnel_handle)
-    {
-      eXFD_SET (reserved->udp_socket, osip_fdset);
-    }
+  if (!excontext->tunnel_handle) {
+    eXFD_SET (reserved->udp_socket, osip_fdset);
+  }
 #else
   eXFD_SET (reserved->udp_socket, osip_fdset);
 #endif
@@ -342,7 +341,7 @@ udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     return;
   }
 
@@ -382,7 +381,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
   char *buf;
   int i;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -404,12 +403,10 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
       return OSIP_NOMEM;
 
 #ifdef TSC_SUPPORT
-    if (excontext->tunnel_handle)
-    {
+    if (excontext->tunnel_handle) {
       i = tsc_recvfrom (reserved->udp_socket, buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
     }
-    else
-    {
+    else {
       i = recvfrom (reserved->udp_socket, buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
     }
 #else
@@ -584,7 +581,7 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   int i;
   osip_naptr_t *naptr_record = NULL;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -781,7 +778,7 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
 
   OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Message sent: (to dest=%s:%i)\n%s\n", ipbuf, port, message));
 
-  if (excontext->enable_dns_cache==1 && osip_strcasecmp (host, ipbuf) != 0 && MSG_IS_REQUEST (sip)) {
+  if (excontext->enable_dns_cache == 1 && osip_strcasecmp (host, ipbuf) != 0 && MSG_IS_REQUEST (sip)) {
     if (MSG_IS_REGISTER (sip)) {
       struct eXosip_dns_cache entry;
 
@@ -864,7 +861,7 @@ udp_tl_keepalive (struct eXosip_t *excontext)
   char buf[4] = "jaK";
   eXosip_reg_t *jr;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -891,7 +888,7 @@ udp_tl_set_socket (struct eXosip_t *excontext, int socket)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -926,7 +923,7 @@ udp_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_size
   memset (ip, 0, ip_size);
   memset (port, 0, port_size);
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -963,6 +960,7 @@ static struct eXtl_protocol eXtl_udp = {
 };
 
 void
-eXosip_transport_udp_init(struct eXosip_t *excontext) {
-  memcpy(&excontext->eXtl_transport, &eXtl_udp, sizeof(struct eXtl_protocol));
+eXosip_transport_udp_init (struct eXosip_t *excontext)
+{
+  memcpy (&excontext->eXtl_transport, &eXtl_udp, sizeof (struct eXtl_protocol));
 }

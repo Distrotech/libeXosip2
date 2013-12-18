@@ -197,7 +197,7 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
     pos++;
   }
 
-  if (MSG_IS_BYE(request)) {
+  if (MSG_IS_BYE (request)) {
     return OSIP_SUCCESS;
   }
 

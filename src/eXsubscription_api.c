@@ -240,7 +240,7 @@ eXosip_subscribe_build_refresh_request (struct eXosip_t *excontext, int did, osi
       pos = osip_message_get_supported (transaction->orig_request, pos, &_header);
     }
 
-    pos=0;
+    pos = 0;
     pos = osip_message_get_call_info (transaction->orig_request, pos, &_call_info_header);
     while (pos >= 0 && _call_info_header != NULL) {
       osip_call_info_t *_header2;

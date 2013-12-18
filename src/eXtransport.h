@@ -72,10 +72,10 @@ struct eXtl_protocol {
   int (*tl_reset) (struct eXosip_t * excontext);
 };
 
-void eXosip_transport_udp_init(struct eXosip_t *excontext);
-void eXosip_transport_tcp_init(struct eXosip_t *excontext);
-void eXosip_transport_tls_init(struct eXosip_t *excontext);
-void eXosip_transport_dtls_init(struct eXosip_t *excontext);
+void eXosip_transport_udp_init (struct eXosip_t *excontext);
+void eXosip_transport_tcp_init (struct eXosip_t *excontext);
+void eXosip_transport_tls_init (struct eXosip_t *excontext);
+void eXosip_transport_dtls_init (struct eXosip_t *excontext);
 
 #if defined (WIN32) || defined (_WIN32_WCE)
 #define eXFD_SET(A, B)   FD_SET((unsigned int) A, B)

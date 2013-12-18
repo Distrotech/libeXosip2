@@ -72,7 +72,7 @@
 #define RANDOM  "random.pem"
 #define DHFILE "dh1024.pem"
 
-SSL_CTX *initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport);
+SSL_CTX *initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport);
 SSL_CTX *initialize_server_ctx (struct eXosip_t *excontext, const char *certif_local_cn_name, eXosip_tls_ctx_t * srv_ctx, int transport);
 
 /* persistent connection */
@@ -278,7 +278,7 @@ dtls_tl_free (struct eXosip_t *excontext)
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
   int pos;
 
-  if (reserved==NULL)
+  if (reserved == NULL)
     return OSIP_SUCCESS;
 
   if (reserved->server_ctx != NULL)
@@ -315,7 +315,7 @@ dtls_tl_open (struct eXosip_t *excontext)
   struct addrinfo *curinfo;
   int sock = -1;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -413,7 +413,7 @@ dtls_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osi
 {
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -438,7 +438,7 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
   int i;
   int enc_buf_len;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -682,7 +682,7 @@ dtls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_
   struct _dtls_stream *_dtls_stream_used = NULL;
   BIO *sbio = NULL;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -1033,7 +1033,7 @@ dtls_tl_keepalive (struct eXosip_t *excontext)
   char buf[4] = "jaK";
   eXosip_reg_t *jr;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -1060,7 +1060,7 @@ dtls_tl_set_socket (struct eXosip_t *excontext, int socket)
 {
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -1095,7 +1095,7 @@ dtls_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_siz
   memset (ip, 0, ip_size);
   memset (port, 0, port_size);
 
-  if (reserved==NULL) {
+  if (reserved == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
     return OSIP_WRONG_STATE;
   }
@@ -1132,8 +1132,9 @@ struct eXtl_protocol eXtl_dtls = {
 };
 
 void
-eXosip_transport_dtls_init(struct eXosip_t *excontext) {
-  memcpy(&excontext->eXtl_transport, &eXtl_dtls, sizeof(struct eXtl_protocol));
+eXosip_transport_dtls_init (struct eXosip_t *excontext)
+{
+  memcpy (&excontext->eXtl_transport, &eXtl_dtls, sizeof (struct eXtl_protocol));
 }
 
 #endif

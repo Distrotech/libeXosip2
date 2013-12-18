@@ -264,7 +264,7 @@ main (int argc, char *argv[])
   }
 #ifndef _WIN32_WCE
   if (!nofork) {
-    daemon(1, 0);
+    daemon (1, 0);
   }
 #endif
 

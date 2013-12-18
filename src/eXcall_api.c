@@ -1038,10 +1038,10 @@ eXosip_call_build_prack (struct eXosip_t *excontext, int tid, osip_message_t ** 
   pos = 0;
   while (!osip_list_eol (jd->d_out_trs, pos)) {
     old_prack_tr = (osip_transaction_t *) osip_list_get (jd->d_out_trs, pos);
-    
-    if (old_prack_tr != NULL && old_prack_tr->orig_request!=NULL && 0 == osip_strcasecmp (old_prack_tr->orig_request->sip_method, "PRACK")) {
+
+    if (old_prack_tr != NULL && old_prack_tr->orig_request != NULL && 0 == osip_strcasecmp (old_prack_tr->orig_request->sip_method, "PRACK")) {
       osip_header_t *rack_header = NULL;
-      
+
       osip_message_header_get_byname (old_prack_tr->orig_request, "RAck", 0, &rack_header);
       if (rack_header != NULL && rack_header->hvalue != NULL && 0 == osip_strcasecmp (rack_header->hvalue, tmp)) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "eXosip: PRACK already active for last answer answer.\n"));

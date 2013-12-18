@@ -134,7 +134,7 @@ _eXosip_process_bye (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dial
 
   osip_transaction_set_reserved2 (transaction, jc);
 
-  if (excontext->autoanswer_bye==0) {
+  if (excontext->autoanswer_bye == 0) {
     /* let the app build and send answers */
     osip_transaction_set_reserved3 (transaction, jd);
     osip_list_add (jd->d_inc_trs, transaction, 0);
@@ -469,7 +469,7 @@ _eXosip_process_new_invite (struct eXosip_t *excontext, osip_transaction_t * tra
     osip_message_free (answer);
     return;
   }
-  _eXosip_check_allow_header(jd, evt->sip);
+  _eXosip_check_allow_header (jd, evt->sip);
 
   ADD_ELEMENT (jc->c_dialogs, jd);
 
@@ -1403,10 +1403,10 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
   se->sip = NULL;
   se->transactionid = 0;
 
-  tmp=buf[length];
-  buf[length]=0;
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Received message len=%i from %s:%i:\n%s\n",length, host,port,buf));
-  buf[length]=tmp;
+  tmp = buf[length];
+  buf[length] = 0;
+  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Received message len=%i from %s:%i:\n%s\n", length, host, port, buf));
+  buf[length] = tmp;
 
   /* parse message and set up an event */
   i = osip_message_init (&(se->sip));
@@ -1521,15 +1521,13 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
 #endif
 
 #ifdef TSC_SUPPORT
-    if (excontext->tunnel_handle)
-    {
+    if (excontext->tunnel_handle) {
       int udp_socket = max;
-      if ((sec_max != -1) && (usec_max != -1))
-      {
-        int32_t total_time = sec_max*1000 + usec_max/1000;
 
-        while (total_time > 0)
-        {
+      if ((sec_max != -1) && (usec_max != -1)) {
+        int32_t total_time = sec_max * 1000 + usec_max / 1000;
+
+        while (total_time > 0) {
           struct timeval tv;
           struct tsc_timeval ttv;
           tsc_fd_set tsc_fdset;
@@ -1541,40 +1539,35 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
           tv.tv_usec = 1000;
 
           i = select (wakeup_socket + 1, &osip_fdset, NULL, NULL, &tv);
-          if (i > 0)
-          {
+          if (i > 0) {
             break;
           }
-          else if (i == -1)
-          {
+          else if (i == -1) {
             return -1;
           }
 
           ttv.tv_sec = 0;
           ttv.tv_usec = 1000;
-          TSC_FD_ZERO(&tsc_fdset);
-          TSC_FD_SET(udp_socket, &tsc_fdset);
+          TSC_FD_ZERO (&tsc_fdset);
+          TSC_FD_SET (udp_socket, &tsc_fdset);
 
           i = tsc_select (udp_socket + 1, &tsc_fdset, NULL, NULL, &ttv);
-          if (i > 0)
-          {
+          if (i > 0) {
             eXFD_SET (udp_socket, &osip_fdset);
 
             break;
           }
-          else if (i == -1)
-          {
+          else if (i == -1) {
             return -1;
           }
 
-          tsc_sleep(100);
+          tsc_sleep (100);
 
           total_time -= 100;
         }
       }
     }
-    else
-    {
+    else {
       if ((sec_max == -1) || (usec_max == -1))
         i = select (max + 1, &osip_fdset, NULL, NULL, NULL);
       else

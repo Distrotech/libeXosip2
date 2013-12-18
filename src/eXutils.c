@@ -444,8 +444,9 @@ _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address,
 #ifdef TSC_SUPPORT
   if (excontext->tunnel_handle) {
     tsc_config config;
-    tsc_get_config(excontext->tunnel_handle, &config);
-    tsc_ip_address_to_str(&(config.internal_address), address, TSC_ADDR_STR_LEN);
+
+    tsc_get_config (excontext->tunnel_handle, &config);
+    tsc_ip_address_to_str (&(config.internal_address), address, TSC_ADDR_STR_LEN);
     return 0;
   }
 #endif
@@ -760,8 +761,8 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
        new one should be automatically used. However, a few system are not
        doing this automatically so, when the DNS server is not accessible,
        we force getaddrinfo to use the new one after the first failure. */
-    if (error==EAI_AGAIN)
-      res_init();
+    if (error == EAI_AGAIN)
+      res_init ();
 #endif
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "getaddrinfo failure. %s:%s (%d)\n", hostname, portbuf, error));
     return OSIP_UNKNOWN_HOST;
@@ -779,13 +780,12 @@ _eXosip_get_addrinfo (struct eXosip_t *excontext, struct addrinfo **addrinfo, co
     }
   }
 
-   /* only one address (?) */
-   if (excontext->tunnel_handle)
-     {
-       (*addrinfo)->ai_next = 0;
+  /* only one address (?) */
+  if (excontext->tunnel_handle) {
+    (*addrinfo)->ai_next = 0;
 
-       return 0;
-     }
+    return 0;
+  }
 
   return OSIP_SUCCESS;
 }
@@ -2844,10 +2844,10 @@ defined(OLD_NAMESER) || defined(__FreeBSD__)
     aclass = _get_short (cp);
     cp += sizeof (u_short);
 #elif defined(__APPLE_CC__)
-    aclass++; /* get rid of compiler warning... who cares */
+    aclass++;                   /* get rid of compiler warning... who cares */
     GETSHORT (aclass, cp);
 #else
-    aclass++; /* get rid of compiler warning... who cares */
+    aclass++;                   /* get rid of compiler warning... who cares */
     NS_GET16 (aclass, cp);
 #endif
 
@@ -2856,10 +2856,10 @@ defined(OLD_NAMESER) || defined(__FreeBSD__)
     ttl = _get_long (cp);
     cp += sizeof (u_long);
 #elif defined(__APPLE_CC__)
-    ttl++; /* get rid of compiler warning... who cares */
+    ttl++;                      /* get rid of compiler warning... who cares */
     GETLONG (ttl, cp);
 #else
-    ttl++; /* get rid of compiler warning... who cares */
+    ttl++;                      /* get rid of compiler warning... who cares */
     NS_GET32 (ttl, cp);
 #endif
 
@@ -2979,6 +2979,7 @@ eXosip_dnsutils_naptr_lookup (osip_naptr_t * output_record, const char *domain)
   querybuf answer;              /* answer buffer from nameserver */
   int n;
   int ancount, qdcount;         /* answer count and query count */
+
   /* int nscount, arcount;         ns count and ar count */
   HEADER *hp;                   /* answer buffer header */
   char hostbuf[256];
@@ -3079,10 +3080,10 @@ defined(OLD_NAMESER) || defined(__FreeBSD__)
     aclass = _get_short (cp);
     cp += sizeof (u_short);
 #elif defined(__APPLE_CC__)
-    aclass++; /* get rid of compiler warning... who cares */
+    aclass++;                   /* get rid of compiler warning... who cares */
     GETSHORT (aclass, cp);
 #else
-    aclass++; /* get rid of compiler warning... who cares */
+    aclass++;                   /* get rid of compiler warning... who cares */
     NS_GET16 (aclass, cp);
 #endif
 
@@ -3091,10 +3092,10 @@ defined(OLD_NAMESER) || defined(__FreeBSD__)
     ttl = _get_long (cp);
     cp += sizeof (u_long);
 #elif defined(__APPLE_CC__)
-    ttl++; /* get rid of compiler warning... who cares */
+    ttl++;                      /* get rid of compiler warning... who cares */
     GETLONG (ttl, cp);
 #else
-    ttl++; /* get rid of compiler warning... who cares */
+    ttl++;                      /* get rid of compiler warning... who cares */
     NS_GET32 (ttl, cp);
 #endif
 

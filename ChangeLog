@@ -1,3 +1,25 @@
+eXosip2 (4.1.0)
+	* improve timer and use UPDATE if advertised, INVITE otherwise.
+	* improve PRACK support.
+	* option to disable automatic BYE answer.
+	* option to enable/disable IPv6 per eXosip_t instance.
+	* option to disable DNS cache.
+	* improve network support for several eXosip_t instance.
+	  keepalive setting is per instance.
+	  ipv4/ipv6 setting is per instance.
+	  improve network setting to avoid conflict upon transport change.
+	* fix tcp and tls connect() for slow connection.
+	* use TCP_NODELAY on more platform.
+	* use Authorization header for 401 // simplify authentication code.
+	* minor expires for REGISTER improvments.
+	* copy call-info over SUBSCRIBE refresh.
+	* allow more TLS error if verification is disabled.
+	* fix if NO NAPTR is availble.
+	* add support for Windows Phone 8.
+	* fix to use cache for TCP and TLS.
+	* fix possible leaks on implementation errors.
+	* add TSC experimental support.
+
 eXosip2 (4.0.0)
 	* modify configuration APIs to use eXosip_set_option
 	* fix bug: do not create new PRACK if it already exist for an answer.

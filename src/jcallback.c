@@ -191,7 +191,7 @@ _eXosip_snd_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   }
 
   i = -1;
-  i = excontext->eXtl_transport.tl_send_message(excontext, tr, sip, host, port, out_socket);
+  i = excontext->eXtl_transport.tl_send_message (excontext, tr, sip, host, port, out_socket);
   if (i != 0) {
     return i;
   }
@@ -380,7 +380,7 @@ cb_rcvrequest (int type, osip_transaction_t * tr, osip_message_t * sip)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "cb_rcv? (id=%i)\r\n", tr->transactionid));
 
     if (MSG_IS_BYE (sip)) {
-      if (excontext->autoanswer_bye==0) {
+      if (excontext->autoanswer_bye == 0) {
         /* not already sent */
         _eXosip_report_call_event (excontext, EXOSIP_CALL_MESSAGE_NEW, jc, jd, tr);
         _eXosip_report_call_event (excontext, EXOSIP_CALL_CLOSED, jc, jd, tr);
@@ -628,12 +628,12 @@ cb_rcv1xx (int type, osip_transaction_t * tr, osip_message_t * sip)
 
     if (jd != NULL && MSG_IS_RESPONSE_FOR (sip, "INVITE")
         && sip->status_code < 180) {
-      _eXosip_check_allow_header(jd, sip);
+      _eXosip_check_allow_header (jd, sip);
       _eXosip_report_call_event (excontext, EXOSIP_CALL_PROCEEDING, jc, jd, tr);
     }
     else if (jd != NULL && MSG_IS_RESPONSE_FOR (sip, "INVITE")
              && sip->status_code >= 180) {
-      _eXosip_check_allow_header(jd, sip);
+      _eXosip_check_allow_header (jd, sip);
       _eXosip_report_call_event (excontext, EXOSIP_CALL_RINGING, jc, jd, tr);
     }
 #ifndef MINISIZE
@@ -737,7 +737,7 @@ cb_rcv2xx_4invite (osip_transaction_t * tr, osip_message_t * sip)
     osip_header_t *se_exp = NULL;
     osip_header_t *se_exp_answer = NULL;
 
-    _eXosip_check_allow_header(jd, sip);
+    _eXosip_check_allow_header (jd, sip);
 
     osip_message_header_get_byname (tr->orig_request, "session-expires", 0, &se_exp);
     if (se_exp == NULL)
@@ -1021,8 +1021,8 @@ cb_rcv2xx (int type, osip_transaction_t * tr, osip_message_t * sip)
       return;
     }
 
-    if (jd!=NULL)
-      _eXosip_check_allow_header(jd, sip);
+    if (jd != NULL)
+      _eXosip_check_allow_header (jd, sip);
 
     if (MSG_IS_RESPONSE_FOR (sip, "UPDATE")) {
       if (jd != NULL) {

@@ -53,8 +53,8 @@ void
 eXosip_enable_ipv6 (int _ipv6_enable)
 {
   /* obsolete, use:
-  eXosip_set_option(excontext, EXOSIP_OPT_ENABLE_IPV6, &val);
-  */
+     eXosip_set_option(excontext, EXOSIP_OPT_ENABLE_IPV6, &val);
+   */
 }
 
 #endif
@@ -75,7 +75,7 @@ eXosip_set_cbsip_message (struct eXosip_t *excontext, CbSipCallback cbsipCallbac
 void
 eXosip_masquerade_contact (struct eXosip_t *excontext, const char *public_address, int port)
 {
-  if (excontext->eXtl_transport.tl_masquerade_contact==NULL) {
+  if (excontext->eXtl_transport.tl_masquerade_contact == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "no transport protocol selected!\n"));
     if (public_address == NULL || public_address[0] == '\0') {
       memset (excontext->udp_firewall_ip, '\0', sizeof (excontext->udp_firewall_ip));
@@ -295,8 +295,8 @@ eXosip_quit (struct eXosip_t *excontext)
     }
   }
 
-  if (excontext->eXtl_transport.tl_free!=NULL)
-    excontext->eXtl_transport.tl_free(excontext);
+  if (excontext->eXtl_transport.tl_free != NULL)
+    excontext->eXtl_transport.tl_free (excontext);
 
   memset (excontext, 0, sizeof (eXosip_t));
   excontext->j_stop_ua = -1;
@@ -314,16 +314,16 @@ eXosip_set_socket (struct eXosip_t *excontext, int transport, int socket, int po
   }
 
   if (transport == IPPROTO_UDP) {
-    eXosip_transport_udp_init(excontext);
-    if (excontext->eXtl_transport.tl_init!=NULL)
+    eXosip_transport_udp_init (excontext);
+    if (excontext->eXtl_transport.tl_init != NULL)
       excontext->eXtl_transport.tl_init (excontext);
     excontext->eXtl_transport.proto_port = port;
     excontext->eXtl_transport.tl_set_socket (excontext, socket);
     snprintf (excontext->transport, sizeof (excontext->transport), "%s", "UDP");
   }
   else if (transport == IPPROTO_TCP) {
-    eXosip_transport_tcp_init(excontext);
-    if (excontext->eXtl_transport.tl_init!=NULL)
+    eXosip_transport_tcp_init (excontext);
+    if (excontext->eXtl_transport.tl_init != NULL)
       excontext->eXtl_transport.tl_init (excontext);
     excontext->eXtl_transport.proto_port = port;
     excontext->eXtl_transport.tl_set_socket (excontext, socket);
@@ -366,7 +366,7 @@ eXosip_find_free_port (struct eXosip_t *excontext, int free_port, int transport)
   int count;
 
   for (count = 0; count < 8; count++) {
-    if (excontext->ipv6_enable==0)
+    if (excontext->ipv6_enable == 0)
       res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "0.0.0.0", free_port + count * 2, transport);
     else
       res1 = _eXosip_get_addrinfo (excontext, &addrinfo_rtp, "::", free_port + count * 2, transport);
@@ -553,21 +553,21 @@ eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr,
   }
 
   if (transport == IPPROTO_UDP && secure == 0)
-    eXosip_transport_udp_init(excontext);
+    eXosip_transport_udp_init (excontext);
   else if (transport == IPPROTO_TCP && secure == 0)
-    eXosip_transport_tcp_init(excontext);
+    eXosip_transport_tcp_init (excontext);
 #ifdef HAVE_OPENSSL_SSL_H
 #if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
   else if (transport == IPPROTO_UDP)
-    eXosip_transport_dtls_init(excontext);
+    eXosip_transport_dtls_init (excontext);
 #endif
   else if (transport == IPPROTO_TCP)
-    eXosip_transport_tls_init(excontext);
+    eXosip_transport_tls_init (excontext);
 #endif
-  else 
+  else
     return OSIP_BADPARAMETER;
 
-  if (excontext->eXtl_transport.tl_init!=NULL)
+  if (excontext->eXtl_transport.tl_init != NULL)
     excontext->eXtl_transport.tl_init (excontext);
 
   excontext->eXtl_transport.proto_family = family;
@@ -582,9 +582,8 @@ eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr,
 
   i = excontext->eXtl_transport.tl_open (excontext);
 
-  if (i != 0)
-  {
-    if (excontext->eXtl_transport.tl_free!=NULL)
+  if (i != 0) {
+    if (excontext->eXtl_transport.tl_free != NULL)
       excontext->eXtl_transport.tl_free (excontext);
     return i;
   }
@@ -611,11 +610,13 @@ eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr,
   return OSIP_SUCCESS;
 }
 
-int eXosip_reset_transports (struct eXosip_t *excontext)
+int
+eXosip_reset_transports (struct eXosip_t *excontext)
 {
   int i = OSIP_WRONG_STATE;
+
   if (excontext->eXtl_transport.tl_reset)
-    i = excontext->eXtl_transport.tl_reset(excontext);
+    i = excontext->eXtl_transport.tl_reset (excontext);
   return i;
 }
 
@@ -1004,9 +1005,10 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     break;
   case EXOSIP_OPT_SET_HEADER_USER_AGENT:
     {
-      const char *user_agent=(const char*)value;
+      const char *user_agent = (const char *) value;
+
       osip_free (excontext->user_agent);
-      if (user_agent==NULL || user_agent[0]=='\0')
+      if (user_agent == NULL || user_agent[0] == '\0')
         excontext->user_agent = osip_strdup ("eXosip/" EXOSIP_VERSION);
       else
         excontext->user_agent = osip_strdup (user_agent);
@@ -1018,23 +1020,24 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     break;
   case EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE:
     val = *((int *) value);
-    eXosip_tls_verify_certificate(excontext, val);
+    eXosip_tls_verify_certificate (excontext, val);
     break;
   case EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO:
     {
       eXosip_tls_ctx_t *tlsval = (eXosip_tls_ctx_t *) value;
-      eXosip_set_tls_ctx(excontext, tlsval);
+
+      eXosip_set_tls_ctx (excontext, tlsval);
     }
     break;
   case EXOSIP_OPT_SET_TLS_CLIENT_CERTIFICATE_NAME:
-    eXosip_tls_use_client_certificate(excontext, (const char*)value);
+    eXosip_tls_use_client_certificate (excontext, (const char *) value);
     break;
   case EXOSIP_OPT_SET_TLS_SERVER_CERTIFICATE_NAME:
-    eXosip_tls_use_server_certificate(excontext, (const char*)value);
+    eXosip_tls_use_server_certificate (excontext, (const char *) value);
     break;
   case EXOSIP_OPT_SET_TSC_SERVER:
 #ifdef TSC_SUPPORT
-    excontext->tunnel_handle = (void*)value;
+    excontext->tunnel_handle = (void *) value;
 #endif
     break;
   case EXOSIP_OPT_ENABLE_AUTOANSWERBYE:
@@ -1072,8 +1075,8 @@ _eXosip_keep_alive (struct eXosip_t *excontext)
   osip_gettimeofday (&excontext->mtimer, NULL);
   add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
 
-  if (excontext->eXtl_transport.tl_keepalive!=NULL)
-    excontext->eXtl_transport.tl_keepalive(excontext);
+  if (excontext->eXtl_transport.tl_keepalive != NULL)
+    excontext->eXtl_transport.tl_keepalive (excontext);
 }
 
 #ifndef OSIP_MONOTHREAD
@@ -1093,4 +1096,3 @@ _eXosip_thread (void *arg)
 }
 
 #endif
-

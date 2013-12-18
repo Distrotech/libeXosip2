@@ -66,25 +66,27 @@ eXosip_register_remove (struct eXosip_t *excontext, int rid)
   return OSIP_SUCCESS;
 }
 
-static const char *days[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-static const char *months[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+static const char *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+static const char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 static void
-_eXosip_register_set_date(osip_message_t *msg){
+_eXosip_register_set_date (osip_message_t * msg)
+{
 #if !defined(_WIN32_WCE)
-  char tmp[256]={0};
-	time_t curtime=time(NULL);
-	struct tm *ret;
+  char tmp[256] = { 0 };
+  time_t curtime = time (NULL);
+  struct tm *ret;
+
 #if !defined(WIN32)
-	struct tm gmt;
-	ret=gmtime_r(&curtime,&gmt);
+  struct tm gmt;
+
+  ret = gmtime_r (&curtime, &gmt);
 #else
-	ret=gmtime(&curtime);
+  ret = gmtime (&curtime);
 #endif
-	/*cannot use strftime because it is locale dependant*/
-	snprintf(tmp,sizeof(tmp)-1,"%s, %i %s %i %02i:%02i:%02i GMT",
-		 days[ret->tm_wday],ret->tm_mday,months[ret->tm_mon],1900+ret->tm_year,ret->tm_hour,ret->tm_min,ret->tm_sec);
-	osip_message_replace_header(msg,"Date",tmp);
+  /*cannot use strftime because it is locale dependant */
+  snprintf (tmp, sizeof (tmp) - 1, "%s, %i %s %i %02i:%02i:%02i GMT", days[ret->tm_wday], ret->tm_mday, months[ret->tm_mon], 1900 + ret->tm_year, ret->tm_hour, ret->tm_min, ret->tm_sec);
+  osip_message_replace_header (msg, "Date", tmp);
 #endif
 }
 
@@ -212,8 +214,9 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
       return i;
   }
 
-  if (reg){
-    if (excontext->register_with_date) _eXosip_register_set_date(reg);
+  if (reg) {
+    if (excontext->register_with_date)
+      _eXosip_register_set_date (reg);
   }
 
   *_reg = reg;

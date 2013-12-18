@@ -846,7 +846,7 @@ eXosip_automatic_action (struct eXosip_t *excontext)
             else if ((jd->d_session_timer_start + jd->d_session_timer_length) - now < (jd->d_session_timer_length / 2)) {
               osip_message_t *request = NULL;
 
-              if (jd->d_session_timer_use_update==1) {
+              if (jd->d_session_timer_use_update == 1) {
                 eXosip_call_build_update (excontext, jd->d_id, &request);
                 if (request != NULL) {
                   char session_exp[32];
@@ -862,7 +862,8 @@ eXosip_automatic_action (struct eXosip_t *excontext)
                     jd->d_session_timer_start = osip_getsystemtime (NULL) + jd->d_session_timer_length;
                   }
                 }
-              } else {
+              }
+              else {
                 eXosip_call_build_request (excontext, jd->d_id, "INVITE", &request);
                 if (request != NULL) {
                   char session_exp[32];
@@ -941,12 +942,10 @@ eXosip_automatic_action (struct eXosip_t *excontext)
           }
           else if (js->s_reg_period == 0 || out_tr == NULL) {
           }
-          else if ((out_tr->state == NICT_TERMINATED
-                  || out_tr->state == NICT_COMPLETED) && out_tr->orig_request != NULL && out_tr->last_response != NULL && (out_tr->last_response->status_code >= 300)) {
-                    /* refresh are not authorized after an error */
+          else if ((out_tr->state == NICT_TERMINATED || out_tr->state == NICT_COMPLETED) && out_tr->orig_request != NULL && out_tr->last_response != NULL && (out_tr->last_response->status_code >= 300)) {
+            /* refresh are not authorized after an error */
           }
-          else if ((out_tr->state == NICT_TERMINATED
-                  || out_tr->state == NICT_COMPLETED) && (now - out_tr->birth_time > js->s_reg_period - (js->s_reg_period / 10) || now - out_tr->birth_time > js->s_reg_period - 6)) {     /* will expires in js->s_reg_period/10 sec OR 6 seconds: send refresh! */
+          else if ((out_tr->state == NICT_TERMINATED || out_tr->state == NICT_COMPLETED) && (now - out_tr->birth_time > js->s_reg_period - (js->s_reg_period / 10) || now - out_tr->birth_time > js->s_reg_period - 6)) {       /* will expires in js->s_reg_period/10 sec OR 6 seconds: send refresh! */
             int i;
 
             i = _eXosip_subscribe_automatic_refresh (excontext, js, jd, out_tr);
@@ -1429,16 +1428,18 @@ _eXosip_mark_all_registrations_expired (struct eXosip_t *excontext)
 }
 
 int
-_eXosip_check_allow_header(eXosip_dialog_t *jd, osip_message_t *message)
+_eXosip_check_allow_header (eXosip_dialog_t * jd, osip_message_t * message)
 {
   int i;
-  for (i=0;!osip_list_eol(&message->allows, i);i++) {
-    osip_allow_t *dest = (osip_allow_t*)osip_list_get(&message->allows, i);
-    if (dest==NULL)
+
+  for (i = 0; !osip_list_eol (&message->allows, i); i++) {
+    osip_allow_t *dest = (osip_allow_t *) osip_list_get (&message->allows, i);
+
+    if (dest == NULL)
       return -1;
-    if (dest->value==NULL)
+    if (dest->value == NULL)
       continue;
-    if (osip_strcasecmp(dest->value, "UPDATE")==0) {
+    if (osip_strcasecmp (dest->value, "UPDATE") == 0) {
       jd->d_session_timer_use_update = 1;
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Allow header contains UPDATE\n"));
     }
