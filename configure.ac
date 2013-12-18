@@ -394,7 +394,6 @@ AC_OUTPUT(
  scripts/Makefile
  platform/Makefile
  platform/vsnet/Makefile
- platform/wince/Makefile
  include/Makefile
  include/eXosip2/Makefile
  src/Makefile
