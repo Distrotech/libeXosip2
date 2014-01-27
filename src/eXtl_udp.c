@@ -62,6 +62,7 @@ void udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * si
 struct eXtludp {
   int udp_socket;
   struct sockaddr_storage ai_addr;
+  char *buf;
 };
 
 static int
@@ -72,6 +73,7 @@ udp_tl_init (struct eXosip_t *excontext)
   if (reserved == NULL)
     return OSIP_NOMEM;
   reserved->udp_socket = 0;
+  reserved->buf=NULL;
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
 
   excontext->eXtludp_reserved = reserved;
@@ -97,6 +99,9 @@ udp_tl_free (struct eXosip_t *excontext)
 #endif
   if (reserved->udp_socket > 0)
     close (reserved->udp_socket);
+
+  if (reserved->buf != NULL)
+    osip_free(reserved->buf);
 
   osip_free (reserved);
   excontext->eXtludp_reserved = NULL;
@@ -378,7 +383,6 @@ static int
 udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip_wrset)
 {
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
-  char *buf;
   int i;
 
   if (reserved == NULL) {
@@ -398,27 +402,28 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     else
       slen = sizeof (struct sockaddr_in6);
 
-    buf = (char *) osip_malloc (SIP_MESSAGE_MAX_LENGTH * sizeof (char) + 1);
-    if (buf == NULL)
+    if (reserved->buf == NULL)
+      reserved->buf = (char *) osip_malloc (SIP_MESSAGE_MAX_LENGTH * sizeof (char) + 1);
+    if (reserved->buf == NULL)
       return OSIP_NOMEM;
 
 #ifdef TSC_SUPPORT
     if (excontext->tunnel_handle) {
-      i = tsc_recvfrom (reserved->udp_socket, buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
+      i = tsc_recvfrom (reserved->udp_socket, reserved->buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
     }
     else {
-      i = recvfrom (reserved->udp_socket, buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
+      i = recvfrom (reserved->udp_socket, reserved->buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
     }
 #else
-    i = (int) recvfrom (reserved->udp_socket, buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
+    i = (int) recvfrom (reserved->udp_socket, reserved->buf, SIP_MESSAGE_MAX_LENGTH, 0, (struct sockaddr *) &sa, &slen);
 #endif
 
-    if (i > 5) {
+    if (i > 32) {
       char src6host[NI_MAXHOST];
       int recvport = 0;
       int err;
 
-      buf[i] = '\0';
+      reserved->buf[i] = '\0';
 
       memset (src6host, 0, sizeof (src6host));
 
@@ -453,7 +458,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
       }
 #endif
 
-      _eXosip_handle_incoming_message (excontext, buf, i, reserved->udp_socket, src6host, recvport, NULL, NULL);
+      _eXosip_handle_incoming_message (excontext, reserved->buf, i, reserved->udp_socket, src6host, recvport, NULL, NULL);
 
     }
     else if (i < 0) {
@@ -470,8 +475,6 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     else {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Dummy SIP message received\n"));
     }
-
-    osip_free (buf);
   }
 
   return OSIP_SUCCESS;
@@ -485,10 +488,12 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
   struct eXosip_account_info *ainfo = NULL;
   char *proxy = NULL;
   int i;
+  osip_via_t *via=NULL;
 
   if (MSG_IS_REQUEST (req)) {
     if (req->from != NULL && req->from->url != NULL && req->from->url->host != NULL)
       proxy = req->from->url->host;
+    osip_message_get_via (req, 0, &via);
   }
   else {
     if (req->to != NULL && req->to->url != NULL && req->to->url->host != NULL)
@@ -554,12 +559,50 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
             co->url->host = osip_strdup (ainfo->nat_ip);
             osip_message_force_update (req);
           }
+#endif
         }
       }
-#endif
     }
   }
 
+  if (excontext->masquerade_via)
+    if (via!=NULL) {
+        if (ainfo == NULL) {
+          if (via->port == NULL && 0 != osip_strcasecmp (excontext->udp_firewall_port, "5060")) {
+            via->port = osip_strdup (excontext->udp_firewall_port);
+            osip_message_force_update (req);
+          }
+          else if (via->port != NULL && 0 != osip_strcasecmp (excontext->udp_firewall_port, via->port)) {
+            osip_free (via->port);
+            via->port = osip_strdup (excontext->udp_firewall_port);
+            osip_message_force_update (req);
+          }
+        }
+        else {
+          if (via->port == NULL && ainfo->nat_port != 5060) {
+            via->port = osip_malloc (10);
+            if (via->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (via->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+          else if (via->port != NULL && ainfo->nat_port != atoi (via->port)) {
+            osip_free (via->port);
+            via->port = osip_malloc (10);
+            if (via->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (via->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+#if 1
+          if (ainfo->nat_ip[0] != '\0') {
+            osip_free (via->host);
+            via->host = osip_strdup (ainfo->nat_ip);
+            osip_message_force_update (req);
+          }
+#endif
+        }
+    }
   return OSIP_SUCCESS;
 }
 
