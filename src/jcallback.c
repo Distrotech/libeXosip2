@@ -111,6 +111,76 @@ static void cb_transport_error (int type, osip_transaction_t * tr, int error);
 
 static void _eXosip_delete_early_dialog (struct eXosip_t *excontext, eXosip_dialog_t * jd);
 
+void
+_eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *jr, osip_message_t *request, osip_message_t *response)
+{
+  osip_via_t *via;
+  osip_generic_param_t *br = NULL;
+
+  char *received_viahost=NULL;
+  char *rport_viaport=NULL;
+  static char *port_5061 = "5061";
+  static char *port_5060 = "5060";
+
+  osip_contact_t *contact;
+  char *contact_port=NULL;
+
+  /* no action if expires=0 */
+  if (jr->r_reg_period==0)
+    return;
+
+  osip_message_get_via(response, 0, &via);
+  if (via==NULL || via->protocol==NULL)
+    return;
+
+  osip_message_get_contact(request, 0, &contact);
+  if (contact==NULL || contact->url==NULL || contact->url->host==NULL)
+    return;
+  /* via host:port info */
+
+  osip_via_param_get_byname(via, "received", &br);
+  if (br!=NULL && br->gvalue!=NULL)
+    received_viahost = br->gvalue;
+
+  if (received_viahost==NULL)
+    received_viahost = via->host;
+
+  if (received_viahost==NULL)
+    return;
+
+  osip_via_param_get_byname(via, "rport", &br);
+  if (br!=NULL && br->gvalue!=NULL)
+    rport_viaport = br->gvalue;
+
+  if (rport_viaport==NULL)
+    rport_viaport = via->port;
+
+  if (rport_viaport==NULL) {
+    /* could be 5060 or 5061 */
+    if (osip_strcasecmp(via->protocol, "DTLS")==0 || osip_strcasecmp(via->protocol, "TLS")==0)
+      rport_viaport = port_5061;
+    else 
+      rport_viaport = port_5060;
+  }
+
+
+  /* contact host:port info */
+  contact_port = contact->url->port;
+  if (contact_port==NULL) {
+    /* could be 5060 or 5061 */
+    if (osip_strcasecmp(via->protocol, "DTLS")==0 || osip_strcasecmp(via->protocol, "TLS")==0)
+      contact_port = port_5061;
+    else 
+      contact_port = port_5060;
+  }
+
+  if (osip_strcasecmp(contact_port, rport_viaport)==0
+    && osip_strcasecmp(received_viahost, contact->url->host)==0)
+    return;
+
+  jr->registration_step=RS_DELETIONREQUIRED; /* proceed with deletion and re-registration of new contact */
+}
+
 int
 _eXosip_snd_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_message_t * sip, char *host, int port, int out_socket)
 {
@@ -973,26 +1043,34 @@ cb_rcv2xx (int type, osip_transaction_t * tr, osip_message_t * sip)
     /* find matching j_reg */
     _eXosip_reg_find (excontext, &jreg, tr);
     if (jreg != NULL) {
-      /* update registration interval */
-      osip_header_t *exp;
 
-      osip_message_header_get_byname (sip, "expires", 0, &exp);
-      if (exp != NULL && exp->hvalue != NULL) {
-        int val = atoi (exp->hvalue);
+      if (jreg->registration_step!=RS_DELETIONPROCEEDING) { /* step to remove contact */
+        /* update registration interval */
+        osip_header_t *exp;
 
-        if (val > 0) {
-          /* update only if expires value has REALLY be
-             decreased (more than one minutes):
-             In many cases value is decreased because a few seconds has
-             elapsed when server send the 200ok. */
-          if (val < jreg->r_reg_period - 15) {
-            jreg->r_reg_period = val;
+        osip_message_header_get_byname (sip, "expires", 0, &exp);
+        if (exp != NULL && exp->hvalue != NULL) {
+          int val = atoi (exp->hvalue);
+
+          if (val > 0) {
+            /* update only if expires value has REALLY be
+               decreased (more than one minutes):
+               In many cases value is decreased because a few seconds has
+               elapsed when server send the 200ok. */
+            if (val < jreg->r_reg_period - 15) {
+              jreg->r_reg_period = val;
+            }
           }
         }
+
+        _eXosip_update_expires_according_to_contact (jreg, tr, sip);
       }
 
-      _eXosip_update_expires_according_to_contact (jreg, tr, sip);
+      if (jreg->registration_step==RS_DELETIONPROCEEDING)
+        jreg->registration_step=RS_MASQUERADINGREQUIRED; /* final registration with correct contact to be done */
 
+      if (jreg->registration_step>RS_MASQUERADINGREQUIRED)
+        _eXosip_register_contact_is_modified(excontext, jreg, tr->orig_request, sip);
       je = _eXosip_event_init_for_reg (EXOSIP_REGISTRATION_SUCCESS, jreg, tr);
       _eXosip_report_event (excontext, je, sip);
       jreg->r_retry = 0;        /* reset value */
@@ -1139,6 +1217,11 @@ rcvregister_failure (osip_transaction_t * tr, osip_message_t * sip)
   /* find matching j_reg */
   _eXosip_reg_find (excontext, &jreg, tr);
   if (jreg != NULL) {
+
+    /* proceed with deletion and re-registration of new contact */
+    if (jreg->registration_step>RS_MASQUERADINGREQUIRED && sip!=NULL)
+      _eXosip_register_contact_is_modified(excontext, jreg, tr->orig_request, sip);
+
     je = _eXosip_event_init_for_reg (EXOSIP_REGISTRATION_FAILURE, jreg, tr);
     _eXosip_report_event (excontext, je, sip);
   }

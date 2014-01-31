@@ -52,8 +52,6 @@
 
 /* Private functions */
 
-void udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip);
-
 static void _eXosip_send_default_answer (struct eXosip_t *excontext, eXosip_dialog_t * jd, osip_transaction_t * transaction, osip_event_t * evt, int status, char *reason_phrase, char *warning, int line);
 static void _eXosip_process_bye (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, osip_transaction_t * transaction, osip_event_t * evt);
 static void _eXosip_process_ack (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, osip_event_t * evt);
@@ -1354,7 +1352,7 @@ _eXosip_process_response_out_of_transaction (struct eXosip_t *excontext, osip_ev
 }
 
 static int
-_eXosip_handle_received_rport (osip_message_t * response, char *host, int port, char *received_host, int *rport_port)
+_eXosip_handle_received_rport (osip_message_t * response, char *received_host, int *rport_port)
 {
   osip_generic_param_t *rport;
   osip_generic_param_t *received;
@@ -1387,6 +1385,63 @@ _eXosip_handle_received_rport (osip_message_t * response, char *host, int port, 
     }
   }
   return 0;
+}
+
+static void
+udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
+{
+  struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
+
+  if (reserved == NULL) {
+    return;
+  }
+
+  /* EXOSIP_OPT_UDP_AUTO_MASQUERADE option set */
+  if (excontext->auto_masquerade_contact > 0) {
+    osip_via_t *via = NULL;
+    osip_generic_param_t *br_rport;
+    osip_generic_param_t *br_received;
+    int i;
+
+    i = osip_message_get_via (sip, 0, &via);
+    if (i >= 0 && via != NULL && via->protocol != NULL && (osip_strcasecmp (via->protocol, "udp") == 0 || osip_strcasecmp (via->protocol, "dtls") == 0)) {
+      struct eXosip_account_info ainfo;
+      osip_via_param_get_byname (via, "rport", &br_rport);
+      osip_via_param_get_byname (via, "received", &br_received);
+
+      if (br_rport == NULL && br_received == NULL)
+        return; /* no change */
+      if (br_rport != NULL && br_rport->gvalue == NULL && br_received == NULL)
+        return; /* no change */
+
+      memset (&ainfo, 0, sizeof (struct eXosip_account_info));
+      if (br_rport != NULL && br_rport->gvalue != NULL) {
+        ainfo.nat_port = atoi (br_rport->gvalue);
+      } else if (via->port!=NULL) {
+        ainfo.nat_port = atoi (via->port);
+      } else {
+        if (osip_strcasecmp(via->protocol, "DTLS")==0 || osip_strcasecmp(via->protocol, "TLS")==0)
+          ainfo.nat_port = 5061;
+        else
+          ainfo.nat_port = 5060;
+      }
+      /* snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%s", br->gvalue); */
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "SIP port modified from rport in SIP answer\r\n"));
+
+      if (br_received != NULL && br_received->gvalue != NULL) {
+        snprintf (ainfo.nat_ip, sizeof (ainfo.nat_ip), "%s", br_received->gvalue);
+      } else {
+        snprintf (ainfo.nat_ip, sizeof (ainfo.nat_ip), "%s", via->host);
+      }
+      if (sip->from != NULL && sip->from->url != NULL && sip->from->url->host != NULL) {
+        snprintf (ainfo.proxy, sizeof (ainfo.proxy), "%s", sip->from->url->host);
+        if (eXosip_set_option (excontext, EXOSIP_OPT_ADD_ACCOUNT_INFO, &ainfo)==OSIP_SUCCESS) {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "we now appear as %s:%i for server %s\r\n", ainfo.nat_ip, ainfo.nat_port, ainfo.proxy));
+        }
+      }
+    }
+  }
+  return;
 }
 
 int
@@ -1463,7 +1518,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
   osip_message_fix_last_via_header (se->sip, host, port);
 
   if (MSG_IS_RESPONSE (se->sip)) {
-    _eXosip_handle_received_rport (se->sip, host, port, received_host, rport_port);
+    _eXosip_handle_received_rport (se->sip, received_host, rport_port);
     udp_tl_learn_port_from_via (excontext, se->sip);
   }
 

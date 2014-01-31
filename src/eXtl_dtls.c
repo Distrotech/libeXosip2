@@ -632,31 +632,128 @@ dtls_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * 
 }
 
 static int
-eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
+dtls_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
 {
   int pos = 0;
 
-  if (excontext->dtls_firewall_ip != '\0') {
+  struct eXosip_account_info *ainfo = NULL;
+  char *proxy = NULL;
+  int i;
+  osip_via_t *via=NULL;
+
+  if (MSG_IS_REQUEST (req)) {
+    if (req->from != NULL && req->from->url != NULL && req->from->url->host != NULL)
+      proxy = req->from->url->host;
+    osip_message_get_via (req, 0, &via);
+  }
+  else {
+    if (req->to != NULL && req->to->url != NULL && req->to->url->host != NULL)
+      proxy = req->to->url->host;
+  }
+
+  if (proxy != NULL) {
+    for (i = 0; i < MAX_EXOSIP_ACCOUNT_INFO; i++) {
+      if (excontext->account_entries[i].proxy[0] != '\0') {
+        if (strstr (excontext->account_entries[i].proxy, proxy) != NULL || strstr (proxy, excontext->account_entries[i].proxy) != NULL) {
+          /* use ainfo */
+          if (excontext->account_entries[i].nat_ip[0] != '\0') {
+            ainfo = &excontext->account_entries[i];
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (excontext->dtls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0) {
 
     while (!osip_list_eol (&req->contacts, pos)) {
       osip_contact_t *co;
 
       co = (osip_contact_t *) osip_list_get (&req->contacts, pos);
       pos++;
-      if (co != NULL && co->url != NULL && co->url->host != NULL && 0 == osip_strcasecmp (co->url->host, excontext->dtls_firewall_ip)) {
-        if (co->url->port == NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, "5061")) {
-          co->url->port = osip_strdup (excontext->dtls_firewall_port);
-          osip_message_force_update (req);
+      if (co != NULL && co->url != NULL && co->url->host != NULL
+#if 0
+          && 0 == osip_strcasecmp (co->url->host, dtls_firewall_ip)
+#endif
+        ) {
+        if (ainfo == NULL) {
+          if (co->url->port == NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, "5061")) {
+            co->url->port = osip_strdup (excontext->dtls_firewall_port);
+            osip_message_force_update (req);
+          }
+          else if (co->url->port != NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, co->url->port)) {
+            osip_free (co->url->port);
+            co->url->port = osip_strdup (excontext->dtls_firewall_port);
+            osip_message_force_update (req);
+          }
         }
-        else if (co->url->port != NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, co->url->port)) {
-          osip_free (co->url->port);
-          co->url->port = osip_strdup (excontext->dtls_firewall_port);
-          osip_message_force_update (req);
+        else {
+          if (co->url->port == NULL && ainfo->nat_port != 5060) {
+            co->url->port = osip_malloc (10);
+            if (co->url->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (co->url->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+          else if (co->url->port != NULL && ainfo->nat_port != atoi (co->url->port)) {
+            osip_free (co->url->port);
+            co->url->port = osip_malloc (10);
+            if (co->url->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (co->url->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+#if 1
+          if (ainfo->nat_ip[0] != '\0') {
+            osip_free (co->url->host);
+            co->url->host = osip_strdup (ainfo->nat_ip);
+            osip_message_force_update (req);
+          }
+#endif
         }
       }
     }
   }
 
+  if (excontext->masquerade_via)
+    if (via!=NULL) {
+        if (ainfo == NULL) {
+          if (via->port == NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, "5060")) {
+            via->port = osip_strdup (excontext->dtls_firewall_port);
+            osip_message_force_update (req);
+          }
+          else if (via->port != NULL && 0 != osip_strcasecmp (excontext->dtls_firewall_port, via->port)) {
+            osip_free (via->port);
+            via->port = osip_strdup (excontext->dtls_firewall_port);
+            osip_message_force_update (req);
+          }
+        }
+        else {
+          if (via->port == NULL && ainfo->nat_port != 5060) {
+            via->port = osip_malloc (10);
+            if (via->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (via->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+          else if (via->port != NULL && ainfo->nat_port != atoi (via->port)) {
+            osip_free (via->port);
+            via->port = osip_malloc (10);
+            if (via->port == NULL)
+              return OSIP_NOMEM;
+            snprintf (via->port, 9, "%i", ainfo->nat_port);
+            osip_message_force_update (req);
+          }
+#if 1
+          if (ainfo->nat_ip[0] != '\0') {
+            osip_free (via->host);
+            via->host = osip_strdup (ainfo->nat_ip);
+            osip_message_force_update (req);
+          }
+#endif
+        }
+    }
   return OSIP_SUCCESS;
 }
 
@@ -700,12 +797,6 @@ dtls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_
 
   if (port == 5060)
     port = 5061;
-
-  if (MSG_IS_REQUEST (sip)) {
-    if (MSG_IS_REGISTER (sip)
-        || MSG_IS_INVITE (sip) || MSG_IS_SUBSCRIBE (sip) || MSG_IS_NOTIFY (sip))
-      eXtl_update_local_target (excontext, sip);
-  }
 
   i = -1;
 #ifndef MINISIZE
@@ -1108,7 +1199,7 @@ dtls_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_siz
   return OSIP_SUCCESS;
 }
 
-struct eXtl_protocol eXtl_dtls = {
+static struct eXtl_protocol eXtl_dtls = {
   1,
   5061,
   "DTLS-UDP",
@@ -1128,6 +1219,7 @@ struct eXtl_protocol eXtl_dtls = {
   &dtls_tl_set_socket,
   &dtls_tl_masquerade_contact,
   &dtls_tl_get_masquerade_contact,
+  &dtls_tl_update_local_target,
   NULL
 };
 

@@ -727,6 +727,8 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->keep_alive = 17000;
   excontext->keep_alive_options = 0;
   excontext->autoanswer_bye = 1;
+  excontext->auto_masquerade_contact = 1;
+  excontext->masquerade_via= 1;
 
   return OSIP_SUCCESS;
 }
@@ -841,6 +843,8 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
         if (excontext->account_entries[i].proxy[0] != '\0' && 0 == osip_strcasecmp (excontext->account_entries[i].proxy, ainfo->proxy)) {
           /* update ainfo */
           if (ainfo->nat_ip[0] != '\0') {
+            if (0 == osip_strcasecmp (excontext->account_entries[i].nat_ip, ainfo->nat_ip) && excontext->account_entries[i].nat_port == ainfo->nat_port)
+              return OSIP_SUCCESS+1; /* NOT MODIFIED */
             snprintf (excontext->account_entries[i].nat_ip, sizeof (excontext->account_entries[i].nat_ip), "%s", ainfo->nat_ip);
             excontext->account_entries[i].nat_port = ainfo->nat_port;
             OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip option set: account info updated:%s -> %s:%i\n", ainfo->proxy, ainfo->nat_ip, ainfo->nat_port));
@@ -963,9 +967,9 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     excontext->keep_alive_options = val;        /* value 0 or 1 */
     break;
 #endif
-  case EXOSIP_OPT_UDP_LEARN_PORT:
+  case EXOSIP_OPT_AUTO_MASQUERADE_CONTACT:
     val = *((int *) value);
-    excontext->learn_port = val;        /* 1 to learn port */
+    excontext->auto_masquerade_contact = val;        /* 1 to learn port */
     break;
 
   case EXOSIP_OPT_USE_RPORT:

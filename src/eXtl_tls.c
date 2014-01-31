@@ -2618,6 +2618,9 @@ _tls_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req, c
 {
   int pos = 0;
 
+  if (req->application_data != (void*) 0x1)
+    return OSIP_SUCCESS;
+
   if ((natted_ip != NULL && natted_ip[0] != '\0') || natted_port > 0) {
 
     while (!osip_list_eol (&req->contacts, pos)) {
@@ -2784,7 +2787,7 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
           ssl = reserved->socket_tab[pos].ssl_conn;
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "reusing REQUEST connection (to dest=%s:%i)\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port));
           _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
-          if (excontext->tls_firewall_ip[0] != '\0')
+          if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
             _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
           break;
         }
@@ -2824,7 +2827,7 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
       out_socket = reserved->socket_tab[pos].socket;
       ssl = reserved->socket_tab[pos].ssl_conn;
       _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
-      if (excontext->tls_firewall_ip[0] != '\0')
+      if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
         _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
     }
   }
@@ -3054,7 +3057,15 @@ tls_tl_get_masquerade_contact (struct eXosip_t *excontext, char *ip, int ip_size
   return OSIP_SUCCESS;
 }
 
-struct eXtl_protocol eXtl_tls = {
+
+static int
+tls_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
+{
+  req->application_data = (void*) 0x1; /* request for masquerading */
+  return OSIP_SUCCESS;
+}
+
+static struct eXtl_protocol eXtl_tls = {
   1,
   5061,
   "TLS",
@@ -3074,6 +3085,7 @@ struct eXtl_protocol eXtl_tls = {
   &tls_tl_set_socket,
   &tls_tl_masquerade_contact,
   &tls_tl_get_masquerade_contact,
+  &tls_tl_update_local_target,
   &tls_tl_reset
 };
 

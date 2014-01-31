@@ -277,6 +277,8 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
 
   osip_message_set_contact (response, contact);
 
+  if (excontext->eXtl_transport.tl_update_local_target!=NULL)
+    excontext->eXtl_transport.tl_update_local_target(excontext, response);
   return OSIP_SUCCESS;
 }
 

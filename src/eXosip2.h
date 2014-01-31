@@ -263,6 +263,11 @@ extern "C" {
 
     osip_transaction_t *r_last_tr;
     int r_retry;                /* avoid too many unsuccessful retry */
+#define RS_DELETIONREQUIRED 2
+#define RS_DELETIONPROCEEDING 3
+#define RS_MASQUERADINGREQUIRED 4
+#define RS_MASQUERADINGPROCEEDING 5
+    int registration_step;      /* registration step for learning contact header binding */
 
     struct __eXosip_sockaddr addr;
     int len;
@@ -462,6 +467,7 @@ extern "C" {
 
     CbSipCallback cbsipCallback;
     int masquerade_via;
+    int auto_masquerade_contact;
   };
 
   int _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address, int size);

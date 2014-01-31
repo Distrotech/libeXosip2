@@ -91,6 +91,133 @@ _eXosip_register_set_date (osip_message_t * msg)
 }
 
 static int
+_eXosip_register_add_contact(struct eXosip_t *excontext, eXosip_reg_t * jreg, osip_message_t *reg)
+{
+  char locip[65];
+  char firewall_ip[65];
+  char firewall_port[10];
+  int i;
+
+  osip_contact_t *new_contact;
+  osip_uri_t *new_contact_url = NULL;
+
+  osip_message_get_contact(reg, 0, &new_contact);
+  if (new_contact!=NULL)
+    return OSIP_SUCCESS; /* already a contact header */
+
+  if (excontext->eXtl_transport.enabled <= 0)
+    return OSIP_NO_NETWORK;
+
+  /* firewall ip & firewall port configured by APPLICATION layer */
+  firewall_ip[0] = '\0';
+  firewall_port[0] = '\0';
+  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
+    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
+  }
+
+  memset (locip, '\0', sizeof (locip));
+  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
+
+  if (locip[0] == '\0') {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
+    return OSIP_NO_NETWORK;
+  }
+
+  i = osip_contact_init (&new_contact);
+  if (i == 0)
+    i = osip_uri_init (&new_contact_url);
+
+  new_contact->url = new_contact_url;
+
+  if (i == 0 && reg->from != NULL && reg->from->url != NULL && reg->from->url->username != NULL) {
+    new_contact_url->username = osip_strdup (reg->from->url->username);
+  }
+
+  if (i != 0 || reg->from == NULL || reg->from->url == NULL) {
+    osip_contact_free (new_contact);
+    return OSIP_SYNTAXERROR;
+  }
+
+  /* search for correct ip */
+  if (firewall_ip[0] != '\0' && reg->req_uri->host != NULL) {
+#ifdef USE_LOCALIP_WITH_LOCALPROXY      /* disable this code for local testing because it adds an extra DNS */
+    char *c_address = reg->req_uri->host;
+
+    struct addrinfo *addrinfo;
+    struct __eXosip_sockaddr addr;
+
+    i = _eXosip_get_addrinfo (excontext, &addrinfo, reg->req_uri->host, 5060, IPPROTO_UDP);
+    if (i == 0) {
+      memcpy (&addr, addrinfo->ai_addr, addrinfo->ai_addrlen);
+      _eXosip_freeaddrinfo (addrinfo);
+      c_address = inet_ntoa (((struct sockaddr_in *) &addr)->sin_addr);
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: here is the resolved destination host=%s\n", c_address));
+    }
+
+    if (_eXosip_is_public_address (c_address)) {
+      new_contact_url->host = osip_strdup (firewall_ip);
+      new_contact_url->port = osip_strdup (firewall_port);
+    }
+    else {
+      new_contact_url->host = osip_strdup (locip);
+      new_contact_url->port = osip_strdup (firewall_port);
+    }
+#else
+    new_contact_url->host = osip_strdup (firewall_ip);
+    new_contact_url->port = osip_strdup (firewall_port);
+#endif
+  }
+  else {
+    new_contact_url->host = osip_strdup (locip);
+    new_contact_url->port = osip_strdup (firewall_port);
+  }
+
+  if (excontext->transport != NULL && osip_strcasecmp (excontext->transport, "UDP") != 0) {
+    osip_uri_uparam_add (new_contact_url, osip_strdup ("transport"), osip_strdup (excontext->transport));
+  }
+
+  if (jreg->r_line[0] != '\0') {
+    osip_uri_uparam_add (new_contact_url, osip_strdup ("line"), osip_strdup (jreg->r_line));
+  }
+  if (jreg->r_qvalue[0] != 0)
+    osip_contact_param_add (new_contact, osip_strdup ("q"), osip_strdup (jreg->r_qvalue));
+
+  osip_list_add (&reg->contacts, new_contact, -1);
+  return OSIP_SUCCESS;
+}
+
+static int
+_eXosip_generating_register (struct eXosip_t *excontext, eXosip_reg_t * jreg, osip_message_t ** reg, char *transport, char *from, char *proxy, char *contact, int expires)
+{
+  int i;
+
+  if (excontext->eXtl_transport.enabled <= 0)
+    return OSIP_NO_NETWORK;
+
+  i = _eXosip_generating_request_out_of_dialog (excontext, reg, "REGISTER", NULL, transport, from, proxy);
+  if (i != 0)
+    return i;
+
+  if (contact == NULL) {
+    _eXosip_register_add_contact(excontext, jreg, *reg);
+  }
+  else {
+    osip_message_set_contact (*reg, contact);
+  }
+
+  {
+    char exp[10];               /* MUST never be ouside 1 and 3600 */
+
+    snprintf (exp, 9, "%i", expires);
+    osip_message_set_expires (*reg, exp);
+  }
+
+  osip_message_set_content_length (*reg, "0");
+
+  return OSIP_SUCCESS;
+}
+
+static int
 _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, osip_message_t ** _reg)
 {
   osip_message_t *reg = NULL;
@@ -102,112 +229,151 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
     return OSIP_BADPARAMETER;
 
   if (jr->r_last_tr != NULL) {
+    osip_message_t *last_response = NULL;
+    osip_transaction_t *tr;
+
     if (jr->r_last_tr->state != NICT_TERMINATED && jr->r_last_tr->state != NICT_COMPLETED)
       return OSIP_WRONG_STATE;
-    else {
-      osip_message_t *last_response = NULL;
-      osip_transaction_t *tr;
 
-      i = osip_message_clone (jr->r_last_tr->orig_request, &reg);
-      if (i != 0)
+    i = osip_message_clone (jr->r_last_tr->orig_request, &reg);
+    if (i != 0)
+      return i;
+    if (jr->r_last_tr->last_response != NULL) {
+      i = osip_message_clone (jr->r_last_tr->last_response, &last_response);
+      if (i != 0) {
+        osip_message_free (reg);
         return i;
-      if (jr->r_last_tr->last_response != NULL) {
-        i = osip_message_clone (jr->r_last_tr->last_response, &last_response);
-        if (i != 0) {
-          osip_message_free (reg);
-          return i;
-        }
+      }
+    }
+
+    _eXosip_delete_reserved (jr->r_last_tr);
+    tr = jr->r_last_tr;
+    jr->r_last_tr = NULL;
+    osip_list_add (&excontext->j_transactions, tr, 0);
+
+    /* modify the REGISTER request */
+    {
+      int osip_cseq_num = osip_atoi (reg->cseq->number);
+      int length = (int) strlen (reg->cseq->number);
+
+
+      osip_list_special_free (&reg->authorizations, (void (*)(void *))
+        &osip_authorization_free);
+      osip_list_special_free (&reg->proxy_authorizations, (void (*)(void *))
+        &osip_proxy_authorization_free);
+
+
+      i = _eXosip_update_top_via (reg);
+      if (i != 0) {
+        osip_message_free (reg);
+        if (last_response != NULL)
+          osip_message_free (last_response);
+        return i;
       }
 
-      _eXosip_delete_reserved (jr->r_last_tr);
-      tr = jr->r_last_tr;
-      jr->r_last_tr = NULL;
-      osip_list_add (&excontext->j_transactions, tr, 0);
-
-      /* modify the REGISTER request */
-      {
-        int osip_cseq_num = osip_atoi (reg->cseq->number);
-        int length = (int) strlen (reg->cseq->number);
-
-
-        osip_list_special_free (&reg->authorizations, (void (*)(void *))
-                                &osip_authorization_free);
-        osip_list_special_free (&reg->proxy_authorizations, (void (*)(void *))
-                                &osip_proxy_authorization_free);
+      osip_cseq_num++;
+      osip_free (reg->cseq->number);
+      reg->cseq->number = (char *) osip_malloc (length + 2);  /* +2 like for 9 to 10 */
+      if (reg->cseq->number == NULL) {
+        osip_message_free (reg);
+        if (last_response != NULL)
+          osip_message_free (last_response);
+        return OSIP_NOMEM;
+      }
+      snprintf (reg->cseq->number, length + 2, "%i", osip_cseq_num);
 
 
-        i = _eXosip_update_top_via (reg);
-        if (i != 0) {
+      if (last_response != NULL && last_response->status_code == 423) {
+        /* increase expires value to "min-expires" value */
+        osip_header_t *exp;
+        osip_header_t *min_exp;
+
+        osip_message_header_get_byname (reg, "expires", 0, &exp);
+        osip_message_header_get_byname (last_response, "min-expires", 0, &min_exp);
+        if (exp != NULL && exp->hvalue != NULL && min_exp != NULL && min_exp->hvalue != NULL) {
+          osip_free (exp->hvalue);
+          exp->hvalue = osip_strdup (min_exp->hvalue);
+          jr->r_reg_period = atoi (min_exp->hvalue);
+          jr->r_reg_expire = jr->r_reg_period;
+        }
+        else {
           osip_message_free (reg);
           if (last_response != NULL)
             osip_message_free (last_response);
-          return i;
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: missing Min-Expires or Expires in REGISTER\n"));
+          return OSIP_SYNTAXERROR;
         }
+      }
+      else {
+        osip_header_t *exp;
 
-        osip_cseq_num++;
-        osip_free (reg->cseq->number);
-        reg->cseq->number = (char *) osip_malloc (length + 2);  /* +2 like for 9 to 10 */
-        if (reg->cseq->number == NULL) {
-          osip_message_free (reg);
-          if (last_response != NULL)
-            osip_message_free (last_response);
-          return OSIP_NOMEM;
-        }
-        snprintf (reg->cseq->number, length + 2, "%i", osip_cseq_num);
-
-
-        if (last_response != NULL && last_response->status_code == 423) {
-          /* increase expires value to "min-expires" value */
-          osip_header_t *exp;
-          osip_header_t *min_exp;
-
-          osip_message_header_get_byname (reg, "expires", 0, &exp);
-          osip_message_header_get_byname (last_response, "min-expires", 0, &min_exp);
-          if (exp != NULL && exp->hvalue != NULL && min_exp != NULL && min_exp->hvalue != NULL) {
+        osip_message_header_get_byname (reg, "expires", 0, &exp);
+        if (exp != NULL) {
+          if (exp->hvalue != NULL)
             osip_free (exp->hvalue);
-            exp->hvalue = osip_strdup (min_exp->hvalue);
-            jr->r_reg_period = atoi (min_exp->hvalue);
-            jr->r_reg_expire = jr->r_reg_period;
-          }
-          else {
+          exp->hvalue = (char *) osip_malloc (10);
+          if (exp->hvalue == NULL) {
             osip_message_free (reg);
             if (last_response != NULL)
               osip_message_free (last_response);
-            OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: missing Min-Expires or Expires in REGISTER\n"));
-            return OSIP_SYNTAXERROR;
+            return OSIP_NOMEM;
           }
+          snprintf (exp->hvalue, 9, "%i", jr->r_reg_expire);
         }
-        else {
-          osip_header_t *exp;
-
-          osip_message_header_get_byname (reg, "expires", 0, &exp);
-          if (exp != NULL) {
-            if (exp->hvalue != NULL)
-              osip_free (exp->hvalue);
-            exp->hvalue = (char *) osip_malloc (10);
-            if (exp->hvalue == NULL) {
-              osip_message_free (reg);
-              if (last_response != NULL)
-                osip_message_free (last_response);
-              return OSIP_NOMEM;
-            }
-            snprintf (exp->hvalue, 9, "%i", jr->r_reg_expire);
-          }
-        }
-
-        osip_message_force_update (reg);
       }
 
-      if (last_response != NULL) {
-        if (last_response->status_code == 401 || last_response->status_code == 407) {
-          _eXosip_add_authentication_information (excontext, reg, last_response);
-        }
-        else
-          _eXosip_add_authentication_information (excontext, reg, NULL);
-        osip_message_free (last_response);
-      }
+      osip_message_force_update (reg);
     }
+
+    if (jr->registration_step==RS_DELETIONPROCEEDING) {
+      /* remove previous contact */
+      osip_contact_t *contact;
+      osip_message_get_contact(reg, 0, &contact);
+      if (contact!=NULL) {
+        osip_generic_param_t *exp_param = NULL;
+        osip_contact_param_get_byname(contact, "expires", &exp_param);
+        if (exp_param == NULL) {
+          osip_contact_param_add (contact, osip_strdup ("expires"), osip_strdup ("0"));
+        }
+      }
+    } else if (jr->registration_step==RS_MASQUERADINGPROCEEDING) {
+      osip_contact_t *contact;
+      osip_message_get_contact(reg, 0, &contact);
+      if (contact!=NULL) {
+        osip_generic_param_t *exp_param = NULL;
+        int pos=0;
+        while (!osip_list_eol (&contact->gen_params, pos)) {
+          size_t len;
+
+          exp_param = (osip_uri_param_t *) osip_list_get (&contact->gen_params, pos);
+          len = strlen (exp_param->gname);
+          if (exp_param->gname!=NULL && osip_strcasecmp (exp_param->gname, "expires") == 0) {
+            osip_list_remove(&contact->gen_params, pos);
+            osip_generic_param_free(exp_param);
+            break;
+          }
+          pos++;
+        }
+      }
+      if (excontext->eXtl_transport.tl_update_local_target!=NULL)
+        excontext->eXtl_transport.tl_update_local_target(excontext, reg);
+      jr->registration_step=RS_MASQUERADINGPROCEEDING+1; /* do only once: keep previous one after */
+    } else if (jr->registration_step==0) {
+      if (excontext->eXtl_transport.tl_update_local_target!=NULL)
+        excontext->eXtl_transport.tl_update_local_target(excontext, reg);
+    }
+
+    if (last_response != NULL) {
+      if (last_response->status_code == 401 || last_response->status_code == 407) {
+        _eXosip_add_authentication_information (excontext, reg, last_response);
+      }
+      else
+        _eXosip_add_authentication_information (excontext, reg, NULL);
+      osip_message_free (last_response);
+    }
+
   }
+
   if (reg == NULL) {
     i = _eXosip_generating_register (excontext, jr, &reg, excontext->transport, jr->r_aor, jr->r_registrar, jr->r_contact, jr->r_reg_expire);
     if (i != 0)
@@ -267,6 +433,9 @@ eXosip_register_build_initial_register_withqvalue (struct eXosip_t *excontext, c
 
   if (qvalue)
     osip_strncpy (jr->r_qvalue, qvalue, sizeof (jr->r_qvalue));
+
+  if (excontext->auto_masquerade_contact>0)
+    jr->registration_step=RS_MASQUERADINGPROCEEDING;
 
   i = _eXosip_register_build_register (excontext, jr, reg);
   if (i != 0) {

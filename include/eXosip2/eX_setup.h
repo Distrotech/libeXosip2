@@ -110,7 +110,8 @@ extern "C" {
 
 #define EXOSIP_OPT_BASE_OPTION 0
 #define EXOSIP_OPT_UDP_KEEP_ALIVE (EXOSIP_OPT_BASE_OPTION+1) /**< int *: interval for keep alive packets (UDP, TCP, TLS, DTLS) */
-#define EXOSIP_OPT_UDP_LEARN_PORT (EXOSIP_OPT_BASE_OPTION+2) /**< int *: specific re-usage of "rport" */
+#define EXOSIP_OPT_AUTO_MASQUERADE_CONTACT (EXOSIP_OPT_BASE_OPTION+2) /**< int *: specific re-usage of "rport" */
+#define EXOSIP_OPT_UDP_LEARN_PORT EXOSIP_OPT_AUTO_MASQUERADE_CONTACT /** EXOSIP_OPT_UDP_LEARN_PORT is obsolete / replaced by EXOSIP_OPT_AUTO_MASQUERADE_CONTACT */
 #define EXOSIP_OPT_USE_RPORT (EXOSIP_OPT_BASE_OPTION+7) /**< int *: enable or disable rport in via */
 #define EXOSIP_OPT_SET_IPV4_FOR_GATEWAY (EXOSIP_OPT_BASE_OPTION+8) /**< char *: usually, this is the proxy address */
 #define EXOSIP_OPT_ADD_DNS_CACHE (EXOSIP_OPT_BASE_OPTION+9) /**< struct eXosip_dns_cache *: force some cache entry to avoid DNS */

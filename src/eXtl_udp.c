@@ -56,9 +56,6 @@
 #include "tsc_control_api.h"
 #endif
 
-void udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip);
-
-
 struct eXtludp {
   int udp_socket;
   struct sockaddr_storage ai_addr;
@@ -341,44 +338,6 @@ udp_tl_set_fdset (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip
   return OSIP_SUCCESS;
 }
 
-void
-udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
-{
-  struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
-
-  if (reserved == NULL) {
-    return;
-  }
-
-  /* EXOSIP_OPT_UDP_LEARN_PORT option set */
-  if (excontext->learn_port > 0) {
-    osip_via_t *via = NULL;
-    osip_generic_param_t *br;
-    int i;
-
-    i = osip_message_get_via (sip, 0, &via);
-    if (i >= 0 && via != NULL && via->protocol != NULL && (osip_strcasecmp (via->protocol, "udp") == 0)) {
-      osip_via_param_get_byname (via, "rport", &br);
-      if (br != NULL && br->gvalue != NULL) {
-        struct eXosip_account_info ainfo;
-
-        memset (&ainfo, 0, sizeof (struct eXosip_account_info));
-        snprintf (excontext->udp_firewall_port, sizeof (excontext->udp_firewall_port), "%s", br->gvalue);
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "SIP port modified from rport in SIP answer\r\n"));
-
-        osip_via_param_get_byname (via, "received", &br);
-        if (br != NULL && br->gvalue != NULL && sip->from != NULL && sip->from->url != NULL && sip->from->url->host != NULL) {
-          snprintf (ainfo.proxy, sizeof (ainfo.proxy), "%s", sip->from->url->host);
-          ainfo.nat_port = atoi (excontext->udp_firewall_port);
-          snprintf (ainfo.nat_ip, sizeof (ainfo.nat_ip), "%s", br->gvalue);
-          eXosip_set_option (excontext, EXOSIP_OPT_ADD_ACCOUNT_INFO, &ainfo);
-        }
-      }
-    }
-  }
-  return;
-}
-
 static int
 udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * osip_wrset)
 {
@@ -481,7 +440,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
 }
 
 static int
-eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
+udp_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
 {
   int pos = 0;
 
@@ -514,7 +473,7 @@ eXtl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
     }
   }
 
-  if (excontext->udp_firewall_ip[0] != '\0') {
+  if (excontext->udp_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0) {
 
     while (!osip_list_eol (&req->contacts, pos)) {
       osip_contact_t *co;
@@ -639,8 +598,6 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     else
       port = 5060;
   }
-
-  eXtl_update_local_target (excontext, sip);
 
   i = -1;
 #ifndef MINISIZE
@@ -999,6 +956,7 @@ static struct eXtl_protocol eXtl_udp = {
   &udp_tl_set_socket,
   &udp_tl_masquerade_contact,
   &udp_tl_get_masquerade_contact,
+  &udp_tl_update_local_target,
   NULL
 };
 

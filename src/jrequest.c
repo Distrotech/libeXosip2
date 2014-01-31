@@ -182,6 +182,8 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
   osip_message_set_contact (request, contact);
   osip_free (contact);
 
+  if (excontext->eXtl_transport.tl_update_local_target!=NULL)
+    excontext->eXtl_transport.tl_update_local_target(excontext, request);
   return OSIP_SUCCESS;
 }
 
@@ -622,117 +624,6 @@ _eXosip_generating_request_out_of_dialog (struct eXosip_t *excontext, osip_messa
   osip_message_set_user_agent (request, excontext->user_agent);
   /*  else if ... */
   *dest = request;
-  return OSIP_SUCCESS;
-}
-
-int
-_eXosip_generating_register (struct eXosip_t *excontext, eXosip_reg_t * jreg, osip_message_t ** reg, char *transport, char *from, char *proxy, char *contact, int expires)
-{
-  int i;
-  char locip[65];
-  char firewall_ip[65];
-  char firewall_port[10];
-
-  if (excontext->eXtl_transport.enabled <= 0)
-    return OSIP_NO_NETWORK;
-
-  firewall_ip[0] = '\0';
-  firewall_port[0] = '\0';
-  if (excontext->eXtl_transport.tl_get_masquerade_contact != NULL) {
-    excontext->eXtl_transport.tl_get_masquerade_contact (excontext, firewall_ip, sizeof (firewall_ip), firewall_port, sizeof (firewall_port));
-  }
-
-  i = _eXosip_generating_request_out_of_dialog (excontext, reg, "REGISTER", NULL, transport, from, proxy);
-  if (i != 0)
-    return i;
-
-  memset (locip, '\0', sizeof (locip));
-  _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
-
-  if (locip[0] == '\0') {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: no default interface defined\n"));
-    osip_message_free (*reg);
-    *reg = NULL;
-    return OSIP_NO_NETWORK;
-  }
-
-  if (contact == NULL) {
-    osip_contact_t *new_contact = NULL;
-    osip_uri_t *new_contact_url = NULL;
-
-    i = osip_contact_init (&new_contact);
-    if (i == 0)
-      i = osip_uri_init (&new_contact_url);
-
-    new_contact->url = new_contact_url;
-
-    if (i == 0 && (*reg)->from != NULL && (*reg)->from->url != NULL && (*reg)->from->url->username != NULL) {
-      new_contact_url->username = osip_strdup ((*reg)->from->url->username);
-    }
-
-    if (i == 0 && (*reg)->from != NULL && (*reg)->from->url != NULL) {
-      /* serach for correct ip */
-      if (firewall_ip[0] != '\0' && (*reg)->req_uri->host != NULL) {
-#ifdef USE_LOCALIP_WITH_LOCALPROXY      /* disable this code for local testing because it adds an extra DNS */
-        char *c_address = (*reg)->req_uri->host;
-
-        struct addrinfo *addrinfo;
-        struct __eXosip_sockaddr addr;
-
-        i = _eXosip_get_addrinfo (excontext, &addrinfo, (*reg)->req_uri->host, 5060, IPPROTO_UDP);
-        if (i == 0) {
-          memcpy (&addr, addrinfo->ai_addr, addrinfo->ai_addrlen);
-          _eXosip_freeaddrinfo (addrinfo);
-          c_address = inet_ntoa (((struct sockaddr_in *) &addr)->sin_addr);
-          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: here is the resolved destination host=%s\n", c_address));
-        }
-
-        if (_eXosip_is_public_address (c_address)) {
-          new_contact_url->host = osip_strdup (firewall_ip);
-          new_contact_url->port = osip_strdup (firewall_port);
-        }
-        else {
-          new_contact_url->host = osip_strdup (locip);
-          new_contact_url->port = osip_strdup (firewall_port);
-        }
-#else
-        new_contact_url->host = osip_strdup (firewall_ip);
-        new_contact_url->port = osip_strdup (firewall_port);
-#endif
-      }
-      else {
-        new_contact_url->host = osip_strdup (locip);
-        new_contact_url->port = osip_strdup (firewall_port);
-      }
-
-      if (transport != NULL && osip_strcasecmp (transport, "UDP") != 0) {
-        osip_uri_uparam_add (new_contact_url, osip_strdup ("transport"), osip_strdup (transport));
-      }
-
-      if (jreg->r_line[0] != '\0') {
-        osip_uri_uparam_add (new_contact_url, osip_strdup ("line"), osip_strdup (jreg->r_line));
-      }
-      if (jreg->r_qvalue[0] != 0)
-        osip_contact_param_add (new_contact, osip_strdup ("q"), osip_strdup (jreg->r_qvalue));
-
-      osip_list_add (&(*reg)->contacts, new_contact, -1);
-    }
-    else
-      osip_contact_free (new_contact);
-  }
-  else {
-    osip_message_set_contact (*reg, contact);
-  }
-
-  {
-    char exp[10];               /* MUST never be ouside 1 and 3600 */
-
-    snprintf (exp, 9, "%i", expires);
-    osip_message_set_expires (*reg, exp);
-  }
-
-  osip_message_set_content_length (*reg, "0");
-
   return OSIP_SUCCESS;
 }
 

@@ -1003,13 +1003,23 @@ eXosip_automatic_action (struct eXosip_t *excontext)
         eXosip_register_send_register (excontext, jr->r_id, NULL);
       }
       else if (now - jr->r_last_tr->birth_time < 120 &&
-               jr->r_last_tr->orig_request != NULL && (jr->r_last_tr->last_response != NULL && (jr->r_last_tr->last_response->status_code == 401 || jr->r_last_tr->last_response->status_code == 407 || jr->r_last_tr->last_response->status_code == 423))) {
+               jr->r_last_tr->orig_request != NULL && (jr->r_last_tr->last_response != NULL && (jr->r_last_tr->last_response->status_code == 401 || jr->r_last_tr->last_response->status_code == 407
+               || jr->r_last_tr->last_response->status_code == 423
+               || jr->r_last_tr->last_response->status_code == 606))) {
         if (jr->r_retry < 3) {
           /* TODO: improve support for several retries when
              several credentials are needed */
           eXosip_register_send_register (excontext, jr->r_id, NULL);
           jr->r_retry++;
         }
+      }
+      else if (jr->registration_step==RS_DELETIONREQUIRED) {
+          jr->registration_step=RS_DELETIONPROCEEDING;
+          eXosip_register_send_register (excontext, jr->r_id, NULL);
+      }
+      else if (jr->registration_step==RS_MASQUERADINGREQUIRED) {
+          jr->registration_step=RS_MASQUERADINGPROCEEDING;
+          eXosip_register_send_register (excontext, jr->r_id, NULL);
       }
     }
   }
