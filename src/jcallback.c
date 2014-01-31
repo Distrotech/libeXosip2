@@ -111,7 +111,7 @@ static void cb_transport_error (int type, osip_transaction_t * tr, int error);
 
 static void _eXosip_delete_early_dialog (struct eXosip_t *excontext, eXosip_dialog_t * jd);
 
-void
+static void
 _eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *jr, osip_message_t *request, osip_message_t *response)
 {
   osip_via_t *via;

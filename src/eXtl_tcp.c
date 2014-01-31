@@ -848,9 +848,7 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
       int count=0;
       int proto_port=excontext->eXtl_transport.proto_port;
       struct sockaddr_storage ai_addr;
-      struct sockaddr *saddr;
       memcpy(&ai_addr, &reserved->ai_addr, reserved->ai_addr_len);
-      saddr=(struct sockaddr*)&ai_addr;
       if (ai_addr.ss_family == AF_INET)
          ((struct sockaddr_in *) &ai_addr)->sin_port = htons(proto_port);
       else
