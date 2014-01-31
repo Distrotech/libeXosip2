@@ -343,10 +343,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
         osip_generic_param_t *exp_param = NULL;
         int pos=0;
         while (!osip_list_eol (&contact->gen_params, pos)) {
-          size_t len;
-
           exp_param = (osip_uri_param_t *) osip_list_get (&contact->gen_params, pos);
-          len = strlen (exp_param->gname);
           if (exp_param->gname!=NULL && osip_strcasecmp (exp_param->gname, "expires") == 0) {
             osip_list_remove(&contact->gen_params, pos);
             osip_generic_param_free(exp_param);

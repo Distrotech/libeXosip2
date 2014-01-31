@@ -499,7 +499,6 @@ extern "C" {
   int _eXosip_reg_find_id (struct eXosip_t *excontext, eXosip_reg_t ** reg, int rid);
   int _eXosip_reg_init (struct eXosip_t *excontext, eXosip_reg_t ** jr, const char *from, const char *proxy, const char *contact);
   void _eXosip_reg_free (struct eXosip_t *excontext, eXosip_reg_t * jreg);
-  int _eXosip_generating_register (struct eXosip_t *excontext, eXosip_reg_t * jreg, osip_message_t ** reg, char *transport, char *from, char *proxy, char *contact, int expires);
 
   int _eXosip_call_transaction_find (struct eXosip_t *excontext, int tid, eXosip_call_t ** jc, eXosip_dialog_t ** jd, osip_transaction_t ** tr);
   int _eXosip_call_retry_request (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, osip_transaction_t * out_tr);
