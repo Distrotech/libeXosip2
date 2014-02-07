@@ -850,9 +850,9 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
       struct sockaddr_storage ai_addr;
       memcpy(&ai_addr, &reserved->ai_addr, reserved->ai_addr_len);
       if (ai_addr.ss_family == AF_INET)
-         ((struct sockaddr_in *) &ai_addr)->sin_port = htons(proto_port);
+         ((struct sockaddr_in *) &ai_addr)->sin_port = htons(0);
       else
-         ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(proto_port);
+         ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(0);
       res = bind (sock, (const struct sockaddr *)&ai_addr, reserved->ai_addr_len);
       if (res < 0) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
