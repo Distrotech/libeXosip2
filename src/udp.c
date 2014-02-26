@@ -1643,6 +1643,9 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
     if ((i == -1) && (errno == EINTR || errno == EAGAIN))
       continue;
 #endif
+
+    osip_compensatetime ();
+
 #ifndef OSIP_MONOTHREAD
     if ((i > 0) && FD_ISSET (wakeup_socket, &osip_fdset)) {
       char buf2[500];
