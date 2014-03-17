@@ -2786,7 +2786,10 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
           out_socket = reserved->socket_tab[pos].socket;
           ssl = reserved->socket_tab[pos].ssl_conn;
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "reusing REQUEST connection (to dest=%s:%i)\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port));
-          _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+          if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
+          } else {
+            _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+          }
           if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
             _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
           break;
@@ -2826,7 +2829,10 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     if (pos >= 0) {
       out_socket = reserved->socket_tab[pos].socket;
       ssl = reserved->socket_tab[pos].ssl_conn;
-      _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+      if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
+      } else {
+        _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+      }
       if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
         _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
     }
