@@ -1013,13 +1013,17 @@ eXosip_automatic_action (struct eXosip_t *excontext)
           jr->r_retry++;
         }
       }
-      else if (jr->registration_step==RS_DELETIONREQUIRED) {
-          jr->registration_step=RS_DELETIONPROCEEDING;
-          eXosip_register_send_register (excontext, jr->r_id, NULL);
+      else if (jr->registration_step==RS_DELETIONREQUIRED && jr->r_last_tr->orig_request != NULL && jr->r_last_tr->last_response != NULL && MSG_IS_STATUS_2XX (jr->r_last_tr->last_response)) {
+        jr->registration_step=RS_DELETIONPROCEEDING;
+        if (OSIP_SUCCESS!=eXosip_register_send_register (excontext, jr->r_id, NULL)) {
+          jr->registration_step=RS_DELETIONREQUIRED;
+        }
       }
-      else if (jr->registration_step==RS_MASQUERADINGREQUIRED) {
-          jr->registration_step=RS_MASQUERADINGPROCEEDING;
-          eXosip_register_send_register (excontext, jr->r_id, NULL);
+      else if (jr->registration_step==RS_MASQUERADINGREQUIRED && jr->r_last_tr->orig_request != NULL && jr->r_last_tr->last_response != NULL && MSG_IS_STATUS_2XX (jr->r_last_tr->last_response)) {
+        jr->registration_step=RS_MASQUERADINGPROCEEDING;
+        if (OSIP_SUCCESS!=eXosip_register_send_register (excontext, jr->r_id, NULL)) {
+          jr->registration_step=RS_MASQUERADINGREQUIRED;
+        }
       }
     }
   }
