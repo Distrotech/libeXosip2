@@ -125,7 +125,8 @@ extern "C" {
 #define EXOSIP_OPT_ENABLE_DNS_CACHE (EXOSIP_OPT_BASE_OPTION+18) /**< int *: 0 to disable use of cache*/
 #define EXOSIP_OPT_ENABLE_AUTOANSWERBYE (EXOSIP_OPT_BASE_OPTION+19) /**< int *: 0 to disable automatic answer of BYE */
 #define EXOSIP_OPT_ENABLE_IPV6 (EXOSIP_OPT_BASE_OPTION+20) /**< int *: 0 to disable -this is a per-eXosip_t parameter for using IPv6 DNS request */
-
+#define EXOSIP_OPT_ENABLE_REUSE_TCP_PORT (EXOSIP_OPT_BASE_OPTION+21) /**< int *: 0 to disable, 1 to enable reusing local tcp port for outgoing tcp connection */
+  
 #define EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE (EXOSIP_OPT_BASE_OPTION+500) /**< int *: enable verification of certificate for TLS connection */
 #define EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO (EXOSIP_OPT_BASE_OPTION+501) /**< eXosip_tls_ctx_t *: client and/or server certificate/ca-root/key info */
 #define EXOSIP_OPT_SET_TLS_CLIENT_CERTIFICATE_NAME (EXOSIP_OPT_BASE_OPTION+502) /**< char*: user can choose a specific certifcate present in Windows Certificate Store */

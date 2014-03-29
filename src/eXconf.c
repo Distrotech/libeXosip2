@@ -1052,6 +1052,11 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     val = *((int *) value);
     excontext->ipv6_enable = val;
     break;
+  case EXOSIP_OPT_ENABLE_REUSE_TCP_PORT:
+    val = *((int *) value);
+    excontext->reuse_tcp_port = val;
+    break;
+    
   default:
     return OSIP_BADPARAMETER;
   }

@@ -845,32 +845,52 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
 
     if (reserved->ai_addr_len>0)
     {
-      int count=0;
-      int proto_port=excontext->eXtl_transport.proto_port;
-      struct sockaddr_storage ai_addr;
-      memcpy(&ai_addr, &reserved->ai_addr, reserved->ai_addr_len);
-      if (ai_addr.ss_family == AF_INET)
-         ((struct sockaddr_in *) &ai_addr)->sin_port = htons(0);
-      else
-         ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(0);
-      res = bind (sock, (const struct sockaddr *)&ai_addr, reserved->ai_addr_len);
-      if (res < 0) {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
-      }
-      while (res < 0) {
-        count++;
-        if (count==100)
-          break;
-        proto_port+=2;
+      if (excontext->reuse_tcp_port>0) {
+        struct sockaddr_storage ai_addr;
+        struct sockaddr *saddr;
+        int valopt = 1;
+
+        setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (void *) &valopt, sizeof (valopt));
+
+        memcpy(&ai_addr, &reserved->ai_addr, reserved->ai_addr_len);
+        saddr=(struct sockaddr*)&ai_addr;
         if (ai_addr.ss_family == AF_INET)
-           ((struct sockaddr_in *) &ai_addr)->sin_port = htons(proto_port);
+          ((struct sockaddr_in *) &ai_addr)->sin_port = htons(excontext->eXtl_transport.proto_port);
         else
-           ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(proto_port);
+          ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(excontext->eXtl_transport.proto_port);
         res = bind (sock, (const struct sockaddr *)&ai_addr, reserved->ai_addr_len);
-      }
-      if (res < 0) {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
-        /* continue anyway as bind is not required... */
+        if (res < 0) {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
+          //continue anyway.
+        }
+      } else {
+        int count=0;
+        int proto_port=excontext->eXtl_transport.proto_port;
+        struct sockaddr_storage ai_addr;
+        memcpy(&ai_addr, &reserved->ai_addr, reserved->ai_addr_len);
+        if (ai_addr.ss_family == AF_INET)
+          ((struct sockaddr_in *) &ai_addr)->sin_port = htons(0);
+        else
+          ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(0);
+        res = bind (sock, (const struct sockaddr *)&ai_addr, reserved->ai_addr_len);
+        if (res < 0) {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
+        }
+        while (res < 0) {
+          count++;
+          if (count==100)
+            break;
+          proto_port+=2;
+          if (ai_addr.ss_family == AF_INET)
+            ((struct sockaddr_in *) &ai_addr)->sin_port = htons(proto_port);
+          else
+            ((struct sockaddr_in6 *) &ai_addr)->sin6_port = htons(proto_port);
+          res = bind (sock, (const struct sockaddr *)&ai_addr, reserved->ai_addr_len);
+        }
+        if (res < 0) {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Cannot bind socket node:%s family:%d %s\n", excontext->eXtl_transport.proto_ifs, ai_addr.ss_family, strerror (ex_errno)));
+          /* continue anyway as bind is not required... */
+        }
       }
     }
 
