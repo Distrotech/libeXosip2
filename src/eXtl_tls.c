@@ -1230,7 +1230,7 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
   SSL_CTX_set_options (ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_CIPHER_SERVER_PREFERENCE);
 
   if (!SSL_CTX_set_cipher_list (ctx, "ALL")) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "set_cipher_list: cannot set anonymous DH cipher\n"));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "set_cipher_list: cannot set ALL cipher\n"));
     SSL_CTX_free (ctx);
     return NULL;
   }
@@ -1319,6 +1319,12 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
   }
 
   SSL_CTX_set_options (ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_CIPHER_SERVER_PREFERENCE);
+
+  if (!SSL_CTX_set_cipher_list (ctx, "ALL")) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "set_cipher_list: cannot set ALL cipher\n"));
+    SSL_CTX_free (ctx);
+    return NULL;
+  }
 
   if (cert == NULL && srv_ctx->server.priv_key[0] != '\0') {
     if (!(SSL_CTX_use_PrivateKey_file (ctx, srv_ctx->server.priv_key, SSL_FILETYPE_PEM))) {
@@ -1745,6 +1751,7 @@ _tls_tl_check_connected (struct eXosip_t *excontext)
 
       res = _tls_tl_is_connected (reserved->socket_tab[pos].socket);
       if (res > 0) {
+        res = connect (reserved->socket_tab[pos].socket, &reserved->socket_tab[pos].ai_addr, reserved->socket_tab[pos].ai_addrlen);
         OSIP_TRACE (osip_trace
                     (__FILE__, __LINE__, OSIP_INFO2, NULL,
                      "_tls_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, in progress\n",
