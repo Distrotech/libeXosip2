@@ -52,7 +52,7 @@ _eXosip_reg_init (struct eXosip_t *excontext, eXosip_reg_t ** jr, const char *fr
   if (*jr == NULL)
     return OSIP_NOMEM;
 
-  if (r_id == 32767)            /* keep it non-negative */
+  if (r_id == INT_MAX)            /* keep it non-negative */
     r_id = 0;
 
   memset (*jr, '\0', sizeof (eXosip_reg_t));

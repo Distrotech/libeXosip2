@@ -1072,7 +1072,7 @@ _eXosip_update (struct eXosip_t *excontext)
 #endif
   eXosip_dialog_t *jd;
 
-  if (static_id == 32767)
+  if (static_id == INT_MAX)
     static_id = 1;              /* loop */
 
   for (jc = excontext->j_calls; jc != NULL; jc = jc->next) {
