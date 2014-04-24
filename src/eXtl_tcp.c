@@ -943,10 +943,12 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Cannot set socket flag!\n"));
         continue;
       }
-#if 0
+#if SO_KEEPALIVE
       val = 1;
       if (setsockopt (sock, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof (val)) == -1) {
       }
+#endif
+#if 0
       val = 30;                 /* 30 sec before starting probes */
       setsockopt (sock, SOL_TCP, TCP_KEEPIDLE, &val, sizeof (val));
       val = 2;                  /* 2 probes max */
@@ -1382,11 +1384,13 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   i = _tcp_tl_is_connected (out_socket);
   if (i > 0) {
     time_t now;
+    int val6 = (int) tr->reserved6;
 
     now = osip_getsystemtime (NULL);
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
-    if (tr != NULL && now - tr->birth_time > 10 && now - tr->birth_time < 13) {
+    if (tr != NULL && now - tr->birth_time > 10 && (val6 & 0x1) == 0) {
       /* avoid doing this twice... */
+      tr->reserved6 = (val6 | 0x1);
       if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
         if (eXosip_dnsutils_rotate_srv (&naptr_record->siptcp_record) > 0) {
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
