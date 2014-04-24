@@ -90,6 +90,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#if defined (HAVE_LIMITS_H)
+#include <limits.h>
+#endif
 
 #if defined (HAVE_SYS_TYPES_H)
 #include <sys/types.h>
