@@ -145,8 +145,6 @@ eXosip_get_local_sdp (struct eXosip_t * excontext, int jid)
 sdp_message_t *
 _eXosip_get_remote_sdp (osip_transaction_t * invite_tr)
 {
-  osip_message_t *message;
-
   if (invite_tr == NULL)
     return NULL;
   if (invite_tr->ctx_type == IST || invite_tr->ctx_type == NIST) {
@@ -166,8 +164,6 @@ _eXosip_get_remote_sdp (osip_transaction_t * invite_tr)
 sdp_message_t *
 _eXosip_get_local_sdp (osip_transaction_t * invite_tr)
 {
-  osip_message_t *message;
-
   if (invite_tr == NULL)
     return NULL;
   if (invite_tr->ctx_type == IST || invite_tr->ctx_type == NIST)
