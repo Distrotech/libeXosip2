@@ -1533,6 +1533,9 @@ tcp_tl_keepalive (struct eXosip_t *excontext)
         OSIP_TRACE (osip_trace
                     (__FILE__, __LINE__, OSIP_ERROR, NULL, "tcp_tl_keepalive socket node:%s:%i, socket %d [pos=%d], socket error\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
         _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+#if TARGET_OS_IPHONE
+        _eXosip_mark_all_registrations_expired (excontext);
+#endif
         continue;
       }
       if (excontext->keep_alive > 0) {
