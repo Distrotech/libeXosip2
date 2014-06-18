@@ -473,8 +473,10 @@ eXosip_call_build_request (struct eXosip_t *excontext, int jid, const char *meth
 
   if (transaction != NULL) {
     if (0 != osip_strcasecmp (method, "INVITE")) {
+#ifndef DONOTWAIT_ENDOFTRANSACTION
       if (transaction->state != NICT_TERMINATED && transaction->state != NIST_TERMINATED && transaction->state != NICT_COMPLETED && transaction->state != NIST_COMPLETED)
         return OSIP_WRONG_STATE;
+#endif
     }
     else {
       if (transaction->state != ICT_TERMINATED && transaction->state != IST_TERMINATED && transaction->state != IST_CONFIRMED && transaction->state != ICT_COMPLETED)
@@ -534,10 +536,12 @@ eXosip_call_send_request (struct eXosip_t *excontext, int jid, osip_message_t * 
 
   if (transaction != NULL) {
     if (0 != osip_strcasecmp (request->sip_method, "INVITE")) {
+#ifndef DONOTWAIT_ENDOFTRANSACTION
       if (transaction->state != NICT_TERMINATED && transaction->state != NIST_TERMINATED && transaction->state != NICT_COMPLETED && transaction->state != NIST_COMPLETED) {
         osip_message_free (request);
         return OSIP_WRONG_STATE;
       }
+#endif
     }
     else {
       if (transaction->state != ICT_TERMINATED && transaction->state != IST_TERMINATED && transaction->state != IST_CONFIRMED && transaction->state != ICT_COMPLETED) {
@@ -796,6 +800,19 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
         supported = NULL;
         i = osip_message_header_get_byname (answer, "supported", i + 1, &supported);
       }
+      if (supported == NULL) {
+        i = osip_message_header_get_byname (answer, "k", 0, &supported);
+        while (i >= 0) {
+          if (supported == NULL)
+            break;
+          if (supported->hvalue != NULL && strstr (supported->hvalue, "timer") != NULL) {
+            /*found */
+            break;
+          }
+          supported = NULL;
+          i = osip_message_header_get_byname (answer, "k", i + 1, &supported);
+        }
+      }
       if (supported != NULL) {  /* timer is supported */
         /* copy session-expires */
         /* add refresher=uas, if it's not already there */
@@ -863,6 +880,19 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
               }
               supported = NULL;
               i = osip_message_header_get_byname (tr->orig_request, "supported", i + 1, &supported);
+            }
+            if (supported == NULL) {
+              i = osip_message_header_get_byname (tr->orig_request, "k", 0, &supported);
+              while (i >= 0) {
+                if (supported == NULL)
+                  break;
+                if (supported->hvalue != NULL && strstr (supported->hvalue, "timer") != NULL) {
+                  /*found */
+                  break;
+                }
+                supported = NULL;
+                i = osip_message_header_get_byname (tr->orig_request, "k", i + 1, &supported);
+              }
             }
             if (supported != NULL) {    /* timer is supported */
               osip_message_set_header (answer, "Require", "timer");
