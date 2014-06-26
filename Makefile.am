@@ -1,4 +1,4 @@
-
+ACLOCAL_AMFLAGS = -I scripts
 EXTRA_DIST = README autogen.sh LICENSE.OpenSSL
 
 SUBDIRS = scripts platform src include tools help

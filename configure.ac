@@ -7,7 +7,7 @@ dnl require at least autoconf v 2.00
 dnl AC_COPYRIGHT (COPYRIGHT-NOTICE)
 
 AC_MSG_NOTICE([eXosip2                 The Extended Open SIP library.])
-AC_MSG_NOTICE([Copyright (C) 2002-2012 Aymeric MOIZARD - <amoizard@antisip.com>])
+AC_MSG_NOTICE([Copyright (C) 2002-2014 Aymeric MOIZARD - <amoizard@antisip.com>])
 
 dnl *********************************************************************
 dnl Source packaging numbers
@@ -44,7 +44,7 @@ dnl Initialize automake stuff
 AC_CONFIG_AUX_DIR(scripts)
 AC_CONFIG_HEADERS(exosip-config.h)
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
-AM_ACLOCAL_INCLUDE(scripts)
+AC_CONFIG_MACRO_DIR([scripts])
 
 AC_CANONICAL_HOST
 
@@ -374,13 +374,16 @@ AC_CHECK_FUNCS(getifaddrs)
 
 AC_ARG_ENABLE(openssl,
 	[  --enable-openssl        enable support for openssl],
-	enable_openssl=$enableval,enable_openssl="yes")
+       enable_openssl=$enableval,enable_openssl="auto")
 
-if test "$enable_openssl" = "yes" ; then
-	AC_CHECK_HEADERS(openssl/ssl.h)
-	AC_CHECK_LIB(ssl,SSL_CTX_new,[EXOSIP_LIB="$EXOSIP_LIB -lssl"])
-	AC_CHECK_LIB(crypto,X509_get_issuer_name,[EXOSIP_LIB="$EXOSIP_LIB -lcrypto"])
-fi
+AS_IF([test "$enable_openssl" = "yes" -o "$enable_openssl" = "auto"],
+      [PKG_CHECK_MODULES([SSL], [openssl],
+                         [EXOSIP_LIB="$EXOSIP_LIB $SSL_LIBS"]
+                         AC_CHECK_HEADERS(openssl/ssl.h),
+                         [AS_IF([test "$enable_openssl" = "yes"],
+                                [AC_MSG_ERROR([can not find openssl])])
+                         ])
+      ])
 
 AC_ARG_ENABLE(srvrec,
 	[  --enable-srvrec         enable support for SRV records DNS queries (yes) ],
