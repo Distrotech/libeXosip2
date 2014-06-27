@@ -923,7 +923,12 @@ eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_m
 }
 
 int
-eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did)
+eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did) {
+  return eXosip_call_terminate_with_reason(excontext, cid, did, NULL);
+}
+
+int
+eXosip_call_terminate_with_reason (struct eXosip_t *excontext, int cid, int did, const char *reason)
 {
   int i;
   osip_transaction_t *tr;
@@ -958,6 +963,9 @@ eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did)
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: cannot terminate this call!\n"));
       return i;
     }
+    if (reason != NULL) {
+      osip_message_set_header(request, "Reason", reason);
+    }
     i = eXosip_create_cancel_transaction (excontext, jc, jd, request);
     if (i != 0) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: cannot initiate SIP transaction!\n"));
@@ -985,8 +993,13 @@ eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did)
 
       osip_from_param_get_byname (tr->orig_request->to, "tag", &to_tag);
 
-      i = eXosip_call_send_answer (excontext, tr->transactionid, 603, NULL);
+      i = eXosip_call_build_answer (excontext, tr->transactionid, 603, &request);
 
+      if (reason != NULL) {
+        osip_message_set_header(request, "Reason", reason);
+      }
+
+      i = eXosip_call_send_answer (excontext, tr->transactionid, 603, request);
       if (to_tag == NULL)
         return i;
     }
@@ -1003,6 +1016,10 @@ eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: cannot terminate this call!\n"));
     return i;
   }
+
+	if (reason != NULL) {
+		osip_message_set_header(request, "Reason", reason);
+	}
 
   _eXosip_add_authentication_information (excontext, request, NULL);
 
