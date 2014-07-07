@@ -253,14 +253,7 @@ tls_tl_free (struct eXosip_t *excontext)
     _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
   }
 
-#if 0
-  /* this would break other ssl usage */
-  EVP_cleanup ();
-  ERR_free_strings ();
   ERR_remove_state (0);
-
-  CRYPTO_cleanup_all_ex_data ();
-#endif
 
   memset (&reserved->socket_tab, 0, sizeof (struct _tls_stream) * EXOSIP_MAX_SOCKETS);
 

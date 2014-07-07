@@ -725,6 +725,7 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->dns_capabilities = 2;
   excontext->enable_dns_cache = 1;
   excontext->keep_alive = 17000;
+  snprintf(excontext->keepalive_crlf, sizeof(excontext->keepalive_crlf), "\r\n\r\n");
   excontext->keep_alive_options = 0;
   excontext->autoanswer_bye = 1;
   excontext->auto_masquerade_contact = 1;

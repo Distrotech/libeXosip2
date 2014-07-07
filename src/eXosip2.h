@@ -432,6 +432,7 @@ extern "C" {
     jauthinfo_t *authinfos;
 
     int keep_alive;
+    char keepalive_crlf[5];
     struct timeval mtimer;
     int keep_alive_options;
     int learn_port;
