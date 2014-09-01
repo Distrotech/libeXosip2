@@ -1392,7 +1392,7 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
         if (eXosip_dnsutils_rotate_srv (&naptr_record->siptcp_record) > 0) {
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
                                   "Doing TCP failover: %s:%i->%s:%i\n", host, port, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].srv, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].port));
-          _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+          if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
           return OSIP_SUCCESS + 1;      /* retry for next retransmission! */
         }
       }
@@ -1466,6 +1466,9 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   }
 
   i = _tcp_tl_send (excontext, out_socket, (const void *) message, (int) length);
+  if (i<0) {
+    if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+  }
   osip_free (message);
   return i;
 }
