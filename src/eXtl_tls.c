@@ -2846,15 +2846,18 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     i = _tls_tl_is_connected (out_socket);
     if (i > 0) {
       time_t now;
+      int val6 = (int) tr->reserved6;
 
       now = osip_getsystemtime (NULL);
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
-      if (tr != NULL && now - tr->birth_time > 10 && now - tr->birth_time < 13) {
+      if (tr != NULL && now - tr->birth_time > 10 && (val6 & 0x1) == 0) {
         /* avoid doing this twice... */
+        tr->reserved6 = (val6 | 0x1);
         if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
           if (eXosip_dnsutils_rotate_srv (&naptr_record->siptls_record) > 0) {
             OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
                                     "Doing TLS failover: %s:%i->%s:%i\n", host, port, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].srv, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].port));
+            _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
             return OSIP_SUCCESS + 1;    /* retry for next retransmission! */
           }
         }
