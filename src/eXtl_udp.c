@@ -825,7 +825,7 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     return -1;
   }
 
-  if (excontext->keep_alive > 0) {
+  if (excontext->ka_interval > 0) {
     if (MSG_IS_REGISTER (sip)) {
       eXosip_reg_t *reg = NULL;
 
@@ -871,7 +871,7 @@ udp_tl_keepalive (struct eXosip_t *excontext)
     return OSIP_WRONG_STATE;
   }
 
-  if (excontext->keep_alive <= 0) {
+  if (excontext->ka_interval <= 0) {
     return 0;
   }
 
@@ -880,7 +880,7 @@ udp_tl_keepalive (struct eXosip_t *excontext)
 
   for (jr = excontext->j_reg; jr != NULL; jr = jr->next) {
     if (jr->len > 0) {
-      if (sendto (reserved->udp_socket, (const void *) excontext->keepalive_crlf, 4, 0, (struct sockaddr *) &(jr->addr), jr->len) > 0) {
+      if (sendto (reserved->udp_socket, (const void *) excontext->ka_crlf, 4, 0, (struct sockaddr *) &(jr->addr), jr->len) > 0) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Keep Alive sent on UDP!\n"));
       }
     }
@@ -962,6 +962,7 @@ static struct eXtl_protocol eXtl_udp = {
   &udp_tl_masquerade_contact,
   &udp_tl_get_masquerade_contact,
   &udp_tl_update_local_target,
+  NULL,
   NULL
 };
 

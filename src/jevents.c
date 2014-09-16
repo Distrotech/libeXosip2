@@ -386,6 +386,10 @@ eXosip_event_wait (struct eXosip_t * excontext, int tv_s, int tv_ms)
   struct timeval tv;
   int max, i;
 
+  if (excontext==NULL) {
+    return NULL;
+  }
+
   FD_ZERO (&fdset);
 #if defined (WIN32) || defined (_WIN32_WCE)
   FD_SET ((unsigned int) jpipe_get_read_descr (excontext->j_socketctl_event), &fdset);

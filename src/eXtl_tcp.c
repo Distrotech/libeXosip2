@@ -102,6 +102,7 @@ struct _tcp_stream {
   int ephemeral_port;
   int invalid;
   int is_server;
+  time_t tcp_max_timeout;
 };
 
 #ifndef SOCKET_TIMEOUT
@@ -487,7 +488,7 @@ _tcp_tl_recv (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
   }
   else {
     int consumed;
-
+    sockinfo->tcp_max_timeout=0;
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: read %d bytes\n", sockinfo->remote_ip, sockinfo->remote_port, r));
     sockinfo->buflen += r;
     consumed = handle_messages (excontext, sockinfo);
@@ -1389,10 +1390,10 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
       /* avoid doing this twice... */
       tr->reserved6 = (val6 | 0x1);
       if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
+        if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
         if (eXosip_dnsutils_rotate_srv (&naptr_record->siptcp_record) > 0) {
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
                                   "Doing TCP failover: %s:%i->%s:%i\n", host, port, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].srv, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].port));
-          if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
           return OSIP_SUCCESS + 1;      /* retry for next retransmission! */
         }
       }
@@ -1469,6 +1470,12 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   if (i<0) {
     if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
   }
+
+  if (i==0 && tr!=NULL && MSG_IS_REGISTER(sip) && pos>=0) {
+    /* start a timeout to destroy connection if no answer */
+    reserved->socket_tab[pos].tcp_max_timeout = osip_getsystemtime (NULL) + 32;
+  }
+
   osip_free (message);
   return i;
 }
@@ -1539,9 +1546,9 @@ tcp_tl_keepalive (struct eXosip_t *excontext)
 #endif
         continue;
       }
-      if (excontext->keep_alive > 0) {
+      if (excontext->ka_interval > 0) {
 #ifdef ENABLE_KEEP_ALIVE_OPTIONS_METHOD
-        if (excontext->keep_alive_options != 0) {
+        if (excontext->ka_options != 0) {
           osip_message_t *options;
           char from[NI_MAXHOST];
           char to[NI_MAXHOST];
@@ -1657,6 +1664,59 @@ tcp_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
   return OSIP_SUCCESS;
 }
 
+static int
+tcp_tl_check_connection (struct eXosip_t *excontext)
+{
+  struct eXtltcp *reserved = (struct eXtltcp *) excontext->eXtltcp_reserved;
+  int pos;
+  int i;
+
+  if (reserved == NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (reserved->tcp_socket <= 0)
+    return OSIP_UNDEFINED_ERROR;
+
+  for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
+    if (reserved->socket_tab[pos].socket > 0) {
+      i = _tcp_tl_is_connected (reserved->socket_tab[pos].socket);
+      if (i > 0) {
+        OSIP_TRACE (osip_trace
+                    (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection socket node:%s:%i, socket %d [pos=%d], in progress\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+        continue;
+      }
+      else if (i == 0) {
+        OSIP_TRACE (osip_trace
+                    (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection socket node:%s:%i , socket %d [pos=%d], connected\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+        if (reserved->socket_tab[pos].tcp_max_timeout>0) {
+          time_t now = osip_getsystemtime (NULL);
+          if (now > reserved->socket_tab[pos].tcp_max_timeout) {
+            OSIP_TRACE (osip_trace
+                        (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection we excepted a reply on established sockets / close socket\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+            reserved->socket_tab[pos].tcp_max_timeout=0;
+            _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+            _eXosip_mark_all_registrations_expired (excontext);
+            continue;
+          }
+        }
+      }
+      else {
+        OSIP_TRACE (osip_trace
+                    (__FILE__, __LINE__, OSIP_ERROR, NULL, "tcp_tl_check_connection socket node:%s:%i, socket %d [pos=%d], socket error\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+        _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+#if TARGET_OS_IPHONE
+        _eXosip_mark_all_registrations_expired (excontext);
+#endif
+        continue;
+      }
+    }
+  }
+  return OSIP_SUCCESS;
+}
+
+
 static struct eXtl_protocol eXtl_tcp = {
   1,
   5060,
@@ -1678,7 +1738,8 @@ static struct eXtl_protocol eXtl_tcp = {
   &tcp_tl_masquerade_contact,
   &tcp_tl_get_masquerade_contact,
   &tcp_tl_update_local_target,
-  &tcp_tl_reset
+  &tcp_tl_reset,
+  &tcp_tl_check_connection
 };
 
 void

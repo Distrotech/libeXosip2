@@ -431,10 +431,11 @@ extern "C" {
 
     jauthinfo_t *authinfos;
 
-    int keep_alive;
-    char keepalive_crlf[5];
-    struct timeval mtimer;
-    int keep_alive_options;
+    struct timeval cc_timer;
+    struct timeval ka_timer;
+    int ka_interval;
+    char ka_crlf[5];
+    int ka_options;
     int learn_port;
     int use_rport;
     int dns_capabilities;
