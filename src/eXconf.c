@@ -729,7 +729,7 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->ka_options = 0;
   excontext->autoanswer_bye = 1;
   excontext->auto_masquerade_contact = 1;
-  excontext->masquerade_via= 1;
+  excontext->masquerade_via=0;
 
   return OSIP_SUCCESS;
 }
@@ -817,9 +817,9 @@ eXosip_execute (struct eXosip_t *excontext)
   _eXosip_release_terminated_in_subscriptions (excontext);
 #endif
 
-  eXosip_unlock (excontext);
-
   _eXosip_keep_alive (excontext);
+
+  eXosip_unlock (excontext);
 
   return OSIP_SUCCESS;
 }
