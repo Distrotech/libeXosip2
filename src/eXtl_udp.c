@@ -56,10 +56,28 @@
 #include "tsc_control_api.h"
 #endif
 
+#if (_WIN32_WINNT >= 0x0600)
+#define ENABLE_SIP_QOS
+#if (_MSC_VER >= 1700) && !defined(_USING_V110_SDK71_)
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
+#undef ENABLE_SIP_QOS
+#endif
+#endif
+#endif
+
+
+#ifdef ENABLE_SIP_QOS
+#include <delayimp.h>
+#undef ExternC
+#include <QOS2.h>
+#endif
+
 struct eXtludp {
   int udp_socket;
   struct sockaddr_storage ai_addr;
   char *buf;
+  void *QoSHandle;
+  unsigned long QoSFlowID;
 };
 
 static int
@@ -72,6 +90,8 @@ udp_tl_init (struct eXosip_t *excontext)
   reserved->udp_socket = 0;
   reserved->buf=NULL;
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
+  reserved->QoSFlowID=0;
+  reserved->QoSHandle=NULL;
 
   excontext->eXtludp_reserved = reserved;
   return OSIP_SUCCESS;
@@ -84,6 +104,45 @@ udp_tl_free (struct eXosip_t *excontext)
 
   if (reserved == NULL)
     return OSIP_SUCCESS;
+
+#ifdef ENABLE_SIP_QOS
+  if (reserved->QoSFlowID != 0)
+  {
+    OSVERSIONINFOEX ovi;
+    memset(&ovi, 0, sizeof(ovi));
+    ovi.dwOSVersionInfoSize = sizeof(ovi);
+    GetVersionEx((LPOSVERSIONINFO) & ovi);
+
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QOS: check OS support for qwave.lib: %i %i %i\n",
+      ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber));
+    if (ovi.dwMajorVersion > 5) {
+
+      if (FAILED(__HrLoadAllImportsForDll("qwave.dll"))) {
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "QOS: Failed to load qwave.dll: no QoS available\n"));
+      }
+      else
+      {
+        BOOL QoSResult;
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QOS: QoS API detected\n"));
+        QoSResult = QOSRemoveSocketFromFlow(reserved->QoSHandle, 
+          0, 
+          reserved->QoSFlowID, 
+          0);
+
+        if (QoSResult != TRUE){
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "QOS: QOSRemoveSocketFromFlow failed to end a flow with error\n"));
+        }
+        reserved->QoSFlowID=0;
+      }
+    }
+  }
+
+  if (reserved->QoSHandle != NULL)
+  {
+    QOSCloseHandle(reserved->QoSHandle);
+    reserved->QoSHandle=NULL;
+  }
+#endif
 
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
 #ifdef TSC_SUPPORT
@@ -109,6 +168,100 @@ udp_tl_free (struct eXosip_t *excontext)
 #define SOCKET_OPTION_VALUE	void *
 #else
 #define SOCKET_OPTION_VALUE char *
+#endif
+
+#ifdef ENABLE_SIP_QOS
+static int
+_udp_tl_transport_set_dscp_qos (struct eXosip_t *excontext, struct sockaddr *rem_addr, int rem_addrlen)
+{
+  int res=0;
+  QOS_TRAFFIC_TYPE tos;
+	OSVERSIONINFOEX ovi;
+
+  struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
+
+  if (reserved == NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "QOS: wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (excontext->tunnel_handle)
+    return 0;
+
+  if (excontext->dscp<=0)
+    return 0;
+
+	memset(&ovi, 0, sizeof(ovi));
+	ovi.dwOSVersionInfoSize = sizeof(ovi);
+	GetVersionEx((LPOSVERSIONINFO) & ovi);
+
+	if (ovi.dwMajorVersion > 5) {
+
+    if (excontext->dscp<=0x8)
+      tos=QOSTrafficTypeBackground;
+    else if (excontext->dscp<=0x28)
+      tos=QOSTrafficTypeAudioVideo;
+    else if (excontext->dscp<=0x38)
+      tos=QOSTrafficTypeVoice;
+    else
+      tos=QOSTrafficTypeExcellentEffort; /* 0x28 */
+
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QOS: Check OS support for qwave.lib: %i %i %i\n",
+      ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber));
+
+		if (FAILED(__HrLoadAllImportsForDll("qwave.dll"))) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "QOS: Failed to load qwave.dll: no QoS available\n"));
+		}
+		else
+		{
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QoS API detected\n"));
+			if (excontext->dscp==0)
+				tos=QOSTrafficTypeBestEffort;
+			else if (excontext->dscp<=0x8)
+				tos=QOSTrafficTypeBackground;
+			else if (excontext->dscp<=0x28)
+				tos=QOSTrafficTypeAudioVideo;
+			else if (excontext->dscp<=0x38)
+				tos=QOSTrafficTypeVoice;
+			else
+				tos=QOSTrafficTypeExcellentEffort; /* 0x28 */
+
+			if (reserved->QoSHandle==NULL) {
+				QOS_VERSION version;
+				BOOL QoSResult;
+
+				version.MajorVersion = 1;
+				version.MinorVersion = 0;
+
+				QoSResult = QOSCreateHandle(&version, &reserved->QoSHandle);
+
+				if (QoSResult != TRUE){
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "QOS: QOSCreateHandle failed to create handle with error\n"));
+					res=-1;
+				}
+			}
+			if (reserved->QoSHandle!=NULL && rem_addrlen>0) {
+				BOOL QoSResult;
+				QoSResult = QOSAddSocketToFlow(
+					reserved->QoSHandle, 
+					reserved->udp_socket,
+					rem_addr,
+					tos, 
+					QOS_NON_ADAPTIVE_FLOW, 
+					&reserved->QoSFlowID);
+
+				if (QoSResult != TRUE){
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "QOS: QOSAddSocketToFlow failed to add a flow with error\n"));
+					res=-1;
+				}
+			}
+		}
+	  if (res<0)
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "QOS: Failed to set DSCP value on socket\n"));
+    return res;
+	}
+  return OSIP_SUCCESS;
+}
 #endif
 
 int
@@ -801,6 +954,10 @@ udp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     if (tr->nict_context != NULL)
       osip_nict_set_destination (tr->nict_context, osip_strdup (ipbuf), port);
   }
+
+#ifdef ENABLE_SIP_QOS
+  _udp_tl_transport_set_dscp_qos(excontext, (struct sockaddr *) &addr, len);
+#endif
 
 #ifdef TSC_SUPPORT
   if (excontext->tunnel_handle)
