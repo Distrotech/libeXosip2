@@ -1382,23 +1382,25 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   i = _tcp_tl_is_connected (out_socket);
   if (i > 0) {
     time_t now;
-    int val6 = (int) tr->reserved6;
+    if (tr!=NULL) {
+      int val6 = (int) tr->reserved6;
 
-    now = osip_getsystemtime (NULL);
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
-    if (tr != NULL && now - tr->birth_time > 10 && (val6 & 0x1) == 0) {
-      /* avoid doing this twice... */
-      tr->reserved6 = (val6 | 0x1);
-      if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
-        if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
-        if (eXosip_dnsutils_rotate_srv (&naptr_record->siptcp_record) > 0) {
-          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
-                                  "Doing TCP failover: %s:%i->%s:%i\n", host, port, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].srv, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].port));
-          return OSIP_SUCCESS + 1;      /* retry for next retransmission! */
+      now = osip_getsystemtime (NULL);
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
+      if (tr != NULL && now - tr->birth_time > 10 && (val6 & 0x1) == 0) {
+        /* avoid doing this twice... */
+        tr->reserved6 = (val6 | 0x1);
+        if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
+          if (pos >= 0) _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+          if (eXosip_dnsutils_rotate_srv (&naptr_record->siptcp_record) > 0) {
+            OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
+                                    "Doing TCP failover: %s:%i->%s:%i\n", host, port, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].srv, naptr_record->siptcp_record.srventry[naptr_record->siptcp_record.index].port));
+            return OSIP_SUCCESS + 1;      /* retry for next retransmission! */
+          }
         }
-      }
 
-      return -1;
+        return -1;
+      }
     }
     return 1;
   }
