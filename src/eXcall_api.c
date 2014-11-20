@@ -1075,7 +1075,7 @@ eXosip_call_build_prack (struct eXosip_t *excontext, int tid, osip_message_t ** 
     return OSIP_SYNTAXERROR;
 
   osip_message_header_get_byname (tr->last_response, "RSeq", 0, &rseq);
-  if (rseq == NULL && rseq->hvalue == NULL) {
+  if (rseq == NULL || rseq->hvalue == NULL) {
     return OSIP_WRONG_FORMAT;
   }
 
