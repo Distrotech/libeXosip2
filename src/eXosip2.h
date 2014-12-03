@@ -431,9 +431,11 @@ extern "C" {
 
     jauthinfo_t *authinfos;
 
-    int keep_alive;
-    struct timeval mtimer;
-    int keep_alive_options;
+    struct timeval cc_timer;
+    struct timeval ka_timer;
+    int ka_interval;
+    char ka_crlf[5];
+    int ka_options;
     int learn_port;
     int use_rport;
     int dns_capabilities;
@@ -472,6 +474,7 @@ extern "C" {
     int masquerade_via;
     int auto_masquerade_contact;
     int reuse_tcp_port;
+    int use_ephemeral_port;
   };
 
   int _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address, int size);

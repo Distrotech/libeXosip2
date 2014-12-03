@@ -227,6 +227,17 @@ extern "C" {
   int eXosip_call_terminate (struct eXosip_t *excontext, int cid, int did);
 
 /**
+ * Terminate a call and add a Reason header.
+ * send CANCEL, BYE or 603 Decline.
+ * 
+ * @param excontext    eXosip_t instance.
+ * @param cid          call id of call.
+ * @param did          dialog id of call.
+ * @param reason       Reason header.
+ */
+  int eXosip_call_terminate_with_reason (struct eXosip_t *excontext, int cid, int did, const char *reason);
+  
+/**
  * Build a PRACK for invite.
  * 
  * @param excontext    eXosip_t instance.

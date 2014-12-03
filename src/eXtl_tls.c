@@ -162,6 +162,7 @@ struct _tls_stream {
   int ephemeral_port;
   int invalid;
   int is_server;
+  time_t tcp_max_timeout;
 };
 
 #ifndef SOCKET_TIMEOUT
@@ -253,14 +254,7 @@ tls_tl_free (struct eXosip_t *excontext)
     _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
   }
 
-#if 0
-  /* this would break other ssl usage */
-  EVP_cleanup ();
-  ERR_free_strings ();
   ERR_remove_state (0);
-
-  CRYPTO_cleanup_all_ex_data ();
-#endif
 
   memset (&reserved->socket_tab, 0, sizeof (struct _tls_stream) * EXOSIP_MAX_SOCKETS);
 
@@ -1977,7 +1971,8 @@ handle_messages (struct eXosip_t *excontext, struct _tls_stream *sockinfo)
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: message has no content-length: <%s>\n", sockinfo->remote_ip, sockinfo->remote_port, buf));
     }
     clen = clen_header ? atoi (clen_header) : 0;
-
+    if (clen<0)
+      return sockinfo->buflen; /* discard data */
     /* undo our overwrite and advance end_headers */
     *end_headers = END_HEADERS_STR[0];
     end_headers += const_strlen (END_HEADERS_STR);
@@ -2117,7 +2112,7 @@ _tls_tl_recv (struct eXosip_t *excontext, struct _tls_stream *sockinfo)
   }
   else {
     int consumed;
-
+    sockinfo->tcp_max_timeout=0;
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: read %d bytes\n", sockinfo->remote_ip, sockinfo->remote_port, r));
     sockinfo->buflen += rlen;
     consumed = handle_messages (excontext, sockinfo);
@@ -2795,7 +2790,8 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "reusing REQUEST connection (to dest=%s:%i)\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port));
           if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
           } else {
-            _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+            if (excontext->use_ephemeral_port==1)
+              _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
           }
           if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
             _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
@@ -2838,7 +2834,8 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
       ssl = reserved->socket_tab[pos].ssl_conn;
       if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
       } else {
-        _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+        if (excontext->use_ephemeral_port==1)
+          _tls_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
       }
       if (excontext->tls_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
         _tls_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
@@ -2853,19 +2850,24 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
     i = _tls_tl_is_connected (out_socket);
     if (i > 0) {
       time_t now;
+      if (tr!=NULL) {
+        int val6 = (int) tr->reserved6;
 
-      now = osip_getsystemtime (NULL);
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
-      if (tr != NULL && now - tr->birth_time > 10 && now - tr->birth_time < 13) {
-        /* avoid doing this twice... */
-        if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
-          if (eXosip_dnsutils_rotate_srv (&naptr_record->siptls_record) > 0) {
-            OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
-                                    "Doing TLS failover: %s:%i->%s:%i\n", host, port, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].srv, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].port));
-            return OSIP_SUCCESS + 1;    /* retry for next retransmission! */
+        now = osip_getsystemtime (NULL);
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "socket node:%s, socket %d [pos=%d], in progress\n", host, out_socket, pos));
+        if (tr != NULL && now - tr->birth_time > 10 && (val6 & 0x1) == 0) {
+          /* avoid doing this twice... */
+          tr->reserved6 = (val6 | 0x1);
+          if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
+            if (pos >= 0) _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
+            if (eXosip_dnsutils_rotate_srv (&naptr_record->siptls_record) > 0) {
+              OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
+                                      "Doing TLS failover: %s:%i->%s:%i\n", host, port, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].srv, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].port));
+              return OSIP_SUCCESS + 1;    /* retry for next retransmission! */
+            }
           }
+          return -1;
         }
-        return -1;
       }
       return 1;
     }
@@ -2967,6 +2969,7 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
       print_ssl_error (i);
 
       osip_free (message);
+      if (pos >= 0) _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
       return -1;
     }
     length = length - i;
@@ -2974,6 +2977,12 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   }
 
   osip_free (message);
+
+  if (tr!=NULL && MSG_IS_REGISTER(sip) && pos>=0) {
+    /* start a timeout to destroy connection if no answer */
+    reserved->socket_tab[pos].tcp_max_timeout = osip_getsystemtime (NULL) + 32;
+  }
+
   return OSIP_SUCCESS;
 }
 
@@ -2990,29 +2999,29 @@ tls_tl_keepalive (struct eXosip_t *excontext)
     return OSIP_WRONG_STATE;
   }
 
-  if (excontext->keep_alive <= 0) {
-    return 0;
-  }
-
   if (reserved->tls_socket <= 0)
     return OSIP_UNDEFINED_ERROR;
 
   for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
-    if (reserved->socket_tab[pos].socket > 0 && reserved->socket_tab[pos].ssl_state > 2) {
-      SSL_set_mode (reserved->socket_tab[pos].ssl_conn, SSL_MODE_AUTO_RETRY);
 
-      while (1) {
-        i = SSL_write (reserved->socket_tab[pos].ssl_conn, (const void *) buf, 4);
+    if (excontext->ka_interval > 0) {
+      if (reserved->socket_tab[pos].socket > 0 && reserved->socket_tab[pos].ssl_state > 2) {
+        SSL_set_mode (reserved->socket_tab[pos].ssl_conn, SSL_MODE_AUTO_RETRY);
 
-        if (i <= 0) {
-          i = SSL_get_error (reserved->socket_tab[pos].ssl_conn, i);
-          if (i == SSL_ERROR_WANT_READ || i == SSL_ERROR_WANT_WRITE)
-            continue;
-          print_ssl_error (i);
+        while (1) {
+          i = SSL_write (reserved->socket_tab[pos].ssl_conn, (const void *) buf, 4);
+
+          if (i <= 0) {
+            i = SSL_get_error (reserved->socket_tab[pos].ssl_conn, i);
+            if (i == SSL_ERROR_WANT_READ || i == SSL_ERROR_WANT_WRITE)
+              continue;
+            print_ssl_error (i);
+          }
+          break;
         }
-        break;
       }
     }
+
   }
   return OSIP_SUCCESS;
 }
@@ -3078,6 +3087,39 @@ tls_tl_update_local_target (struct eXosip_t *excontext, osip_message_t * req)
   return OSIP_SUCCESS;
 }
 
+static int
+tls_tl_check_connection (struct eXosip_t *excontext)
+{
+  struct eXtltls *reserved = (struct eXtltls *) excontext->eXtltls_reserved;
+  int pos;
+
+  if (reserved == NULL) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "wrong state: create transport layer first\n"));
+    return OSIP_WRONG_STATE;
+  }
+
+  if (reserved->tls_socket <= 0)
+    return OSIP_UNDEFINED_ERROR;
+
+  for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
+
+    if (reserved->socket_tab[pos].socket > 0 && reserved->socket_tab[pos].ssl_state > 2
+      && reserved->socket_tab[pos].tcp_max_timeout>0) {
+      time_t now = osip_getsystemtime (NULL);
+      if (now > reserved->socket_tab[pos].tcp_max_timeout) {
+        OSIP_TRACE (osip_trace
+          (__FILE__, __LINE__, OSIP_INFO2, NULL, "tls_tl_check_connection we excepted a reply on established sockets / close socket\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+        reserved->socket_tab[pos].tcp_max_timeout=0;
+        _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
+        _eXosip_mark_all_registrations_expired (excontext);
+        continue;
+      }
+    }
+
+  }
+  return OSIP_SUCCESS;
+}
+
 static struct eXtl_protocol eXtl_tls = {
   1,
   5061,
@@ -3099,7 +3141,8 @@ static struct eXtl_protocol eXtl_tls = {
   &tls_tl_masquerade_contact,
   &tls_tl_get_masquerade_contact,
   &tls_tl_update_local_target,
-  &tls_tl_reset
+  &tls_tl_reset,
+  &tls_tl_check_connection
 };
 
 void

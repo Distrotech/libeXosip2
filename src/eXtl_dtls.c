@@ -293,6 +293,9 @@ dtls_tl_free (struct eXosip_t *excontext)
       shutdown_free_server_dtls (excontext, pos);
     }
   }
+  
+  ERR_remove_state (0);
+
   memset (&reserved->socket_tab, 0, sizeof (struct _dtls_stream) * EXOSIP_MAX_SOCKETS);
 
   memset (&reserved->ai_addr, 0, sizeof (struct sockaddr_storage));
@@ -1102,7 +1105,7 @@ dtls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_
     return -1;
   }
 
-  if (excontext->keep_alive > 0) {
+  if (excontext->ka_interval > 0) {
     if (MSG_IS_REGISTER (sip)) {
       eXosip_reg_t *reg = NULL;
 
@@ -1121,7 +1124,6 @@ static int
 dtls_tl_keepalive (struct eXosip_t *excontext)
 {
   struct eXtldtls *reserved = (struct eXtldtls *) excontext->eXtldtls_reserved;
-  char buf[4] = "jaK";
   eXosip_reg_t *jr;
 
   if (reserved == NULL) {
@@ -1129,7 +1131,7 @@ dtls_tl_keepalive (struct eXosip_t *excontext)
     return OSIP_WRONG_STATE;
   }
 
-  if (excontext->keep_alive <= 0) {
+  if (excontext->ka_interval <= 0) {
     return 0;
   }
 
@@ -1138,7 +1140,7 @@ dtls_tl_keepalive (struct eXosip_t *excontext)
 
   for (jr = excontext->j_reg; jr != NULL; jr = jr->next) {
     if (jr->len > 0) {
-      if (sendto (reserved->dtls_socket, (const void *) buf, 4, 0, (struct sockaddr *) &(jr->addr), jr->len) > 0) {
+      if (sendto (reserved->dtls_socket, (const void *) excontext->ka_crlf, 4, 0, (struct sockaddr *) &(jr->addr), jr->len) > 0) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "eXosip: Keep Alive sent on DTLS-UDP!\n"));
       }
     }
@@ -1220,6 +1222,7 @@ static struct eXtl_protocol eXtl_dtls = {
   &dtls_tl_masquerade_contact,
   &dtls_tl_get_masquerade_contact,
   &dtls_tl_update_local_target,
+  NULL,
   NULL
 };
 

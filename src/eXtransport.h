@@ -71,6 +71,7 @@ struct eXtl_protocol {
   int (*tl_get_masquerade_contact) (struct eXosip_t * excontext, char *ip, int ip_size, char *port, int port_size);
   int (*tl_update_local_target) (struct eXosip_t * excontext, osip_message_t *sip);
   int (*tl_reset) (struct eXosip_t * excontext);
+  int (*tl_check_connection) (struct eXosip_t * excontext);
 };
 
 void eXosip_transport_udp_init (struct eXosip_t *excontext);

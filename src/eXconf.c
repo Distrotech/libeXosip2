@@ -724,11 +724,13 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->use_rport = 1;
   excontext->dns_capabilities = 2;
   excontext->enable_dns_cache = 1;
-  excontext->keep_alive = 17000;
-  excontext->keep_alive_options = 0;
+  excontext->ka_interval = 17000;
+  snprintf(excontext->ka_crlf, sizeof(excontext->ka_crlf), "\r\n\r\n");
+  excontext->ka_options = 0;
   excontext->autoanswer_bye = 1;
   excontext->auto_masquerade_contact = 1;
-  excontext->masquerade_via= 1;
+  excontext->masquerade_via=0;
+  excontext->use_ephemeral_port=1;
 
   return OSIP_SUCCESS;
 }
@@ -816,9 +818,9 @@ eXosip_execute (struct eXosip_t *excontext)
   _eXosip_release_terminated_in_subscriptions (excontext);
 #endif
 
-  eXosip_unlock (excontext);
-
   _eXosip_keep_alive (excontext);
+
+  eXosip_unlock (excontext);
 
   return OSIP_SUCCESS;
 }
@@ -959,12 +961,12 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     break;
   case EXOSIP_OPT_UDP_KEEP_ALIVE:
     val = *((int *) value);
-    excontext->keep_alive = val;        /* value in ms */
+    excontext->ka_interval = val;        /* value in ms */
     break;
 #ifdef ENABLE_KEEP_ALIVE_OPTIONS_METHOD
   case EXOSIP_OPT_KEEP_ALIVE_OPTIONS_METHOD:
     val = *((int *) value);
-    excontext->keep_alive_options = val;        /* value 0 or 1 */
+    excontext->ka_options = val;        /* value 0 or 1 */
     break;
 #endif
   case EXOSIP_OPT_AUTO_MASQUERADE_CONTACT:
@@ -1056,7 +1058,10 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     val = *((int *) value);
     excontext->reuse_tcp_port = val;
     break;
-    
+  case EXOSIP_OPT_ENABLE_USE_EPHEMERAL_PORT:
+    val = *((int *) value);
+    excontext->use_ephemeral_port = val;
+    break;
   default:
     return OSIP_BADPARAMETER;
   }
@@ -1070,19 +1075,41 @@ _eXosip_keep_alive (struct eXosip_t *excontext)
 
   osip_gettimeofday (&now, NULL);
 
-  if (excontext->mtimer.tv_sec == 0 && excontext->mtimer.tv_usec == 0) {
+  /* 
+  the stack is waking up every 10 seconds when no action is required. So
+  this method will be called at a maximum interval of 10 seconds and minimum
+  2 seconds.
+  The objective is to detect broken connections that do not fire any error
+  within an acceptable timeframe.
+  */
+  if (excontext->cc_timer.tv_sec == 0 && excontext->cc_timer.tv_usec == 0) {
     /* first init */
-    osip_gettimeofday (&excontext->mtimer, NULL);
-    add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
+    osip_gettimeofday (&excontext->cc_timer, NULL);
+    add_gettimeofday (&excontext->cc_timer, 2);
   }
 
-  if (osip_timercmp (&now, &excontext->mtimer, <)) {
+  if (osip_timercmp (&now, &excontext->cc_timer, >=)) {
+    /* reset timer */
+    osip_gettimeofday (&excontext->cc_timer, NULL);
+    add_gettimeofday (&excontext->cc_timer, 2);
+
+    if (excontext->eXtl_transport.tl_check_connection != NULL)
+      excontext->eXtl_transport.tl_check_connection (excontext);
+  }
+
+  if (excontext->ka_timer.tv_sec == 0 && excontext->ka_timer.tv_usec == 0) {
+    /* first init */
+    osip_gettimeofday (&excontext->ka_timer, NULL);
+    add_gettimeofday (&excontext->ka_timer, excontext->ka_interval);
+  }
+
+  if (osip_timercmp (&now, &excontext->ka_timer, <)) {
     return;                     /* not yet time */
   }
 
   /* reset timer */
-  osip_gettimeofday (&excontext->mtimer, NULL);
-  add_gettimeofday (&excontext->mtimer, excontext->keep_alive);
+  osip_gettimeofday (&excontext->ka_timer, NULL);
+  add_gettimeofday (&excontext->ka_timer, excontext->ka_interval);
 
   if (excontext->eXtl_transport.tl_keepalive != NULL)
     excontext->eXtl_transport.tl_keepalive (excontext);
