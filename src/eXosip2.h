@@ -474,6 +474,7 @@ extern "C" {
     int masquerade_via;
     int auto_masquerade_contact;
     int reuse_tcp_port;
+    int use_ephemeral_port;
   };
 
   int _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address, int size);

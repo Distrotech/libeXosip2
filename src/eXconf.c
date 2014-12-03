@@ -730,6 +730,7 @@ eXosip_init (struct eXosip_t *excontext)
   excontext->autoanswer_bye = 1;
   excontext->auto_masquerade_contact = 1;
   excontext->masquerade_via=0;
+  excontext->use_ephemeral_port=1;
 
   return OSIP_SUCCESS;
 }
@@ -1057,7 +1058,10 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
     val = *((int *) value);
     excontext->reuse_tcp_port = val;
     break;
-    
+  case EXOSIP_OPT_ENABLE_USE_EPHEMERAL_PORT:
+    val = *((int *) value);
+    excontext->use_ephemeral_port = val;
+    break;
   default:
     return OSIP_BADPARAMETER;
   }

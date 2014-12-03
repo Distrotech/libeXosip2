@@ -416,7 +416,8 @@ handle_messages (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: message has no content-length: <%s>\n", sockinfo->remote_ip, sockinfo->remote_port, buf));
     }
     clen = clen_header ? atoi (clen_header) : 0;
-
+    if (clen<0)
+      return sockinfo->buflen; /* discard data */
     /* undo our overwrite and advance end_headers */
     *end_headers = END_HEADERS_STR[0];
     end_headers += const_strlen (END_HEADERS_STR);
@@ -1324,7 +1325,8 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
           OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "reusing REQUEST connection (to dest=%s:%i)\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port));
           if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
           } else {
-            _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+            if (excontext->use_ephemeral_port==1)
+              _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
           }
           if (excontext->tcp_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
             _tcp_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
@@ -1369,7 +1371,8 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
       out_socket = reserved->socket_tab[pos].socket;
       if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
       } else {
-        _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
+        if (excontext->use_ephemeral_port==1)
+          _tcp_tl_update_local_target_use_ephemeral_port (excontext, sip, reserved->socket_tab[pos].ephemeral_port);
       }
       if (excontext->tcp_firewall_ip[0] != '\0' || excontext->auto_masquerade_contact > 0)
         _tcp_tl_update_local_target (excontext, sip, reserved->socket_tab[pos].natted_ip, reserved->socket_tab[pos].natted_port);
