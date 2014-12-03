@@ -101,8 +101,8 @@ _eXosip_transaction_init (struct eXosip_t *excontext, osip_transaction_t ** tran
   osip_transaction_set_reserved1 (*transaction, excontext);
   {
     osip_naptr_t *naptr_record = NULL;
-
-    i = _eXosip_srv_lookup (excontext, message, &naptr_record);
+    if (ctx_type==NICT || ctx_type==ICT)
+      i = _eXosip_srv_lookup (excontext, message, &naptr_record);
     if (i < 0) {
       /* might be a simple DNS request or an IP */
       return OSIP_SUCCESS;
