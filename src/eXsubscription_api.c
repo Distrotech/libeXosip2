@@ -129,7 +129,7 @@ eXosip_subscribe_build_initial_request (struct eXosip_t *excontext, osip_message
   osip_to_free (_to);
   if (i != 0)
     return i;
-  _eXosip_dialog_add_contact (excontext, *sub, NULL);
+  _eXosip_dialog_add_contact (excontext, *sub);
 
   snprintf (tmp, 10, "%i", expires);
   osip_message_set_expires (*sub, tmp);

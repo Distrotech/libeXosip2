@@ -571,7 +571,7 @@ extern "C" {
   int _eXosip_is_public_address (const char *addr);
 
   void _eXosip_retransmit_lost200ok (struct eXosip_t *excontext);
-  int _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request, osip_message_t * answer);
+  int _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request);
 
   int _eXosip_transaction_init (struct eXosip_t *excontext, osip_transaction_t ** transaction, osip_fsm_type_t ctx_type, osip_t * osip, osip_message_t * message);
 

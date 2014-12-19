@@ -182,6 +182,15 @@ _eXosip_register_add_contact(struct eXosip_t *excontext, eXosip_reg_t * jreg, os
   if (jreg->r_qvalue[0] != 0)
     osip_contact_param_add (new_contact, osip_strdup ("q"), osip_strdup (jreg->r_qvalue));
 
+  /* If the address-of-record in the To header field of a REGISTER request
+   is a SIPS URI, then any Contact header field values in the request
+   SHOULD also be SIPS URIs.
+   */
+  if (reg->to!=NULL && reg->to->url!=NULL && reg->to->url->scheme!=NULL && osip_strcasecmp(reg->to->url->scheme, "sips")==0) {
+    if (new_contact->url->scheme!=NULL)
+      osip_free(new_contact->url->scheme);
+    new_contact->url->scheme = osip_strdup("sips");
+  }
   osip_list_add (&reg->contacts, new_contact, -1);
   return OSIP_SUCCESS;
 }

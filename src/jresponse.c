@@ -180,6 +180,9 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
   char locip[65];
   char firewall_ip[65];
   char firewall_port[10];
+  char scheme[10];
+
+  snprintf(scheme, sizeof(scheme), "sip");
 
   /* 12.1.1:
      copy all record-route in response
@@ -194,12 +197,27 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
     if (i != 0)
       return i;
     osip_list_add (&response->record_routes, rr2, -1);
+
+    /* rfc3261: 12.1.1 UAS behavior (check sips in top most Record-Route) */
+    if (pos==0 && rr2->url!=NULL && rr2->url->scheme!=NULL && osip_strcasecmp(rr2->url->scheme, "sips")==0)
+      snprintf(scheme, sizeof(scheme), "sips");
+
     pos++;
   }
 
   if (MSG_IS_BYE (request)) {
     return OSIP_SUCCESS;
   }
+
+  if (pos==0) {
+    /* rfc3261: 12.1.1 UAS behavior (check sips in Contact if no Record-Route) */
+    osip_contact_t *co = (osip_contact_t *) osip_list_get(&request->contacts, 0);
+    if (pos==0 && co->url!=NULL && co->url->scheme!=NULL && osip_strcasecmp(co->url->scheme, "sips")==0)
+      snprintf(scheme, sizeof(scheme), "sips");
+  }
+  /* rfc3261: 12.1.1 UAS behavior (check sips in Request-URI) */
+  if (request->req_uri->scheme!=NULL && osip_strcasecmp(request->req_uri->scheme, "sips")==0)
+    snprintf(scheme, sizeof(scheme), "sips");
 
   firewall_ip[0] = '\0';
   firewall_port[0] = '\0';
@@ -211,11 +229,11 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
   _eXosip_guess_ip_for_via (excontext, excontext->eXtl_transport.proto_family, locip, 49);
 
   if (request->to->url->username == NULL)
-    snprintf (contact, 1000, "<sip:%s:%s>", locip, firewall_port);
+    snprintf (contact, 1000, "<%s:%s:%s>", scheme, locip, firewall_port);
   else {
     char *tmp2 = __osip_uri_escape_userinfo (request->to->url->username);
 
-    snprintf (contact, 1000, "<sip:%s@%s:%s>", tmp2, locip, firewall_port);
+    snprintf (contact, 1000, "<%s:%s@%s:%s>", scheme, tmp2, locip, firewall_port);
     osip_free (tmp2);
   }
   if (firewall_ip[0] != '\0') {
@@ -240,22 +258,22 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
          coming from the PUBLIC network. */
       if (_eXosip_is_public_address (c_address)) {
         if (request->to->url->username == NULL)
-          snprintf (contact, 1000, "<sip:%s:%s>", firewall_ip, firewall_port);
+          snprintf (contact, 1000, "<%s:%s:%s>", scheme, firewall_ip, firewall_port);
         else {
           char *tmp2 = __osip_uri_escape_userinfo (request->to->url->username);
 
-          snprintf (contact, 1000, "<sip:%s@%s:%s>", tmp2, firewall_ip, firewall_port);
+          snprintf (contact, 1000, "<%s:%s@%s:%s>", scheme, tmp2, firewall_ip, firewall_port);
           osip_free (tmp2);
         }
       }
     }
 #else
     if (request->to->url->username == NULL)
-      snprintf (contact, 1000, "<sip:%s:%s>", firewall_ip, firewall_port);
+      snprintf (contact, 1000, "<%s:%s:%s>", scheme, firewall_ip, firewall_port);
     else {
       char *tmp2 = __osip_uri_escape_userinfo (request->to->url->username);
 
-      snprintf (contact, 1000, "<sip:%s@%s:%s>", tmp2, firewall_ip, firewall_port);
+      snprintf (contact, 1000, "<%s:%s@%s:%s>", scheme, tmp2, firewall_ip, firewall_port);
       osip_free (tmp2);
     }
 #endif

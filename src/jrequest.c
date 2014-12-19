@@ -73,7 +73,7 @@ eXosip_generate_random (char *buf, int buf_size)
 }
 
 int
-_eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request, osip_message_t * answer)
+_eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request)
 {
   osip_via_t *via;
   osip_from_t *a_from;
@@ -81,6 +81,7 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
   char locip[65];
   char firewall_ip[65];
   char firewall_port[10];
+  char scheme[10];
   int len;
 
   if (excontext->eXtl_transport.enabled <= 0)
@@ -101,13 +102,16 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
     return OSIP_SYNTAXERROR;
   }
 
-  if (answer == NULL)
-    a_from = request->from;
-  else
-    a_from = answer->to;
+  a_from = request->from;
 
   if (a_from == NULL || a_from->url == NULL)
     return OSIP_SYNTAXERROR;
+
+  /* rfc3261: 8.1.1.8 Contact */
+  if (request->req_uri!=NULL && request->req_uri->scheme!=NULL && osip_strcasecmp(request->req_uri->scheme, "sips")==0)
+    snprintf(scheme, sizeof(scheme), "sips");
+  else
+    snprintf(scheme, sizeof(scheme), "sip");
 
   /*guess the local ip since req uri is known */
   memset (locip, '\0', sizeof (locip));
@@ -116,6 +120,8 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
     len = (int) (2 + 4 + (strlen (a_from->url->username) * 3) + 1 + 100 + 6 + 10 + strlen (excontext->transport));
   else
     len = (int) (2 + 4 + 100 + 6 + 10 + strlen (excontext->transport));
+
+  len++; /* if using sips instead of sip */
 
   contact = (char *) osip_malloc (len + 1);
   if (contact == NULL)
@@ -157,21 +163,21 @@ _eXosip_dialog_add_contact (struct eXosip_t *excontext, osip_message_t * request
     if (a_from->url->username != NULL) {
       char *tmp2 = __osip_uri_escape_userinfo (a_from->url->username);
 
-      snprintf (contact, len, "<sip:%s@[%s]:%s>", tmp2, locip, firewall_port);
+      snprintf (contact, len, "<%s:%s@[%s]:%s>", scheme, tmp2, locip, firewall_port);
       osip_free (tmp2);
     }
     else
-      snprintf (contact, len - strlen (excontext->transport) - 10, "<sip:[%s]:%s>", locip, firewall_port);
+      snprintf (contact, len - strlen (excontext->transport) - 10, "<%s:[%s]:%s>", scheme, locip, firewall_port);
   }
   else {
     if (a_from->url->username != NULL) {
       char *tmp2 = __osip_uri_escape_userinfo (a_from->url->username);
 
-      snprintf (contact, len, "<sip:%s@%s:%s>", tmp2, locip, firewall_port);
+      snprintf (contact, len, "<%s:%s@%s:%s>", scheme, tmp2, locip, firewall_port);
       osip_free (tmp2);
     }
     else
-      snprintf (contact, len - strlen (excontext->transport) - 10, "<sip:%s:%s>", locip, firewall_port);
+      snprintf (contact, len - strlen (excontext->transport) - 10, "<%s:%s:%s>", scheme, locip, firewall_port);
   }
   if (osip_strcasecmp (excontext->transport, "UDP") != 0) {
     contact[strlen (contact) - 1] = '\0';
@@ -872,7 +878,7 @@ _eXosip_build_request_within_dialog (struct eXosip_t *excontext, osip_message_t 
   }
 
   /* add specific headers for each kind of request... */
-  _eXosip_dialog_add_contact (excontext, request, NULL);
+  _eXosip_dialog_add_contact (excontext, request);
 
   if (0 == strcmp ("NOTIFY", method)) {
   }
