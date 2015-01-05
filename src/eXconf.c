@@ -625,8 +625,10 @@ eXosip_malloc (void)
 {
   struct eXosip_t *ptr = (struct eXosip_t *) osip_malloc (sizeof (eXosip_t));
 
-  if (ptr)
+  if (ptr) {
     memset (ptr, 0, sizeof (eXosip_t));
+    ptr->j_stop_ua = -1;
+  }
   return ptr;
 }
 
