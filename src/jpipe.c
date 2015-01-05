@@ -161,6 +161,8 @@ jpipe ()
 
   j = 50;
   while (aport++ && j-- > 0) {
+    if (aport>65500)
+      aport = 10500;
     raddr.sin_port = htons ((short) aport);
     if (bind (s, (struct sockaddr *) &raddr, sizeof (raddr)) < 0) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Failed to bind one local socket %i!\n", aport));
