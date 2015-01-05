@@ -878,7 +878,10 @@ _eXosip_build_request_within_dialog (struct eXosip_t *excontext, osip_message_t 
   }
 
   /* add specific headers for each kind of request... */
-  _eXosip_dialog_add_contact (excontext, request);
+  if ((0 != strcmp ("BYE", method)) && (0 != strcmp ("CANCEL", method)))
+  {
+    _eXosip_dialog_add_contact (excontext, request);
+  }
 
   if (0 == strcmp ("NOTIFY", method)) {
   }
