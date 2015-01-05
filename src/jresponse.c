@@ -192,7 +192,7 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
     osip_record_route_t *rr;
     osip_record_route_t *rr2;
 
-    rr = osip_list_get (&request->record_routes, pos);
+    rr = (osip_record_route_t *) osip_list_get (&request->record_routes, pos);
     i = osip_record_route_clone (rr, &rr2);
     if (i != 0)
       return i;
