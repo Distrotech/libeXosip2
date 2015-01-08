@@ -882,7 +882,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
             osip_via_param_get_byname (transaction->topvia, "branch", &br);
             osip_via_param_get_byname (jc->c_inc_tr->topvia, "branch", &br2);
             if (br != NULL && br2 != NULL && br->gvalue != NULL && br2->gvalue != NULL) {
-              if (osip_strcasecmp (br->gname, br2->gvalue) == 0) {
+              if (osip_strcasecmp (br->gvalue, br2->gvalue) == 0) {
                 /* use-case: 1/ a duplicate of initial INVITE is received (same TOP Via header) after we replied -> discard */
                 OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: drop INVITE retransmission after INVITE reply\n"));
                 _eXosip_dnsutils_release (transaction->naptr_record);
