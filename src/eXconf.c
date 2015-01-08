@@ -301,6 +301,9 @@ eXosip_quit (struct eXosip_t *excontext)
   memset (excontext, 0, sizeof (eXosip_t));
   excontext->j_stop_ua = -1;
 
+#ifdef WIN32
+  WSACleanup();
+#endif
   return;
 }
 
