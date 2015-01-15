@@ -1412,6 +1412,7 @@ tcp_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
   }
   else {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "socket node:%s, socket %d [pos=%d], socket error\n", host, out_socket, pos));
+    _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
     return -1;
   }
 
