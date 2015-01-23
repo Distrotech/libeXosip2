@@ -199,7 +199,7 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
     osip_list_add (&response->record_routes, rr2, -1);
 
     /* rfc3261: 12.1.1 UAS behavior (check sips in top most Record-Route) */
-    if (pos==0 && rr2->url!=NULL && rr2->url->scheme!=NULL && osip_strcasecmp(rr2->url->scheme, "sips")==0)
+    if (pos==0 && rr2!=NULL && rr2->url!=NULL && rr2->url->scheme!=NULL && osip_strcasecmp(rr2->url->scheme, "sips")==0)
       snprintf(scheme, sizeof(scheme), "sips");
 
     pos++;
@@ -212,7 +212,7 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
   if (pos==0) {
     /* rfc3261: 12.1.1 UAS behavior (check sips in Contact if no Record-Route) */
     osip_contact_t *co = (osip_contact_t *) osip_list_get(&request->contacts, 0);
-    if (pos==0 && co->url!=NULL && co->url->scheme!=NULL && osip_strcasecmp(co->url->scheme, "sips")==0)
+    if (pos==0 && co!=NULL && co->url!=NULL && co->url->scheme!=NULL && osip_strcasecmp(co->url->scheme, "sips")==0)
       snprintf(scheme, sizeof(scheme), "sips");
   }
   /* rfc3261: 12.1.1 UAS behavior (check sips in Request-URI) */
