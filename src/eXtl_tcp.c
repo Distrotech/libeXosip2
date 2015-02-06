@@ -727,7 +727,16 @@ _tcp_tl_check_connected (struct eXosip_t *excontext)
     if (reserved->socket_tab[pos].socket > 0 && reserved->socket_tab[pos].ai_addrlen > 0) {
       res = _tcp_tl_is_connected (reserved->socket_tab[pos].socket);
       if (res > 0) {
+#if 0
+        /* bug: calling connect several times for TCP is not allowed by specification */
         res = connect (reserved->socket_tab[pos].socket, &reserved->socket_tab[pos].ai_addr, reserved->socket_tab[pos].ai_addrlen);
+        if (res<0) {
+          int status = ex_errno;
+          OSIP_TRACE (osip_trace
+                      (__FILE__, __LINE__, OSIP_INFO2, NULL,
+                       "_tcp_tl_check_connected: connect being called again (res=%i) (errno=%i) (%s)\n", res, status, strerror (status)));
+        }
+#endif
         OSIP_TRACE (osip_trace
                     (__FILE__, __LINE__, OSIP_INFO2, NULL,
                      "_tcp_tl_check_connected: socket node:%s:%i, socket %d [pos=%d], family:%d, in progress\n",
