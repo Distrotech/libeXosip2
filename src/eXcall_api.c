@@ -1483,6 +1483,7 @@ eXosip_call_get_referto (struct eXosip_t *excontext, int did, char *refer_to, si
 
   snprintf (refer_to, refer_to_len, "%s", referto_tmp);
   osip_uri_free (referto_uri);
+  osip_free (referto_tmp);
 
   return OSIP_SUCCESS;
 }
