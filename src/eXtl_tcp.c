@@ -103,6 +103,7 @@ struct _tcp_stream {
   int invalid;
   int is_server;
   time_t tcp_max_timeout;
+  time_t tcp_inprogress_max_timeout;
 };
 
 #ifndef SOCKET_TIMEOUT
@@ -1070,6 +1071,7 @@ _tcp_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
       }
     }
 
+    reserved->socket_tab[pos].tcp_inprogress_max_timeout = osip_getsystemtime (NULL) + 32;
     return pos;
   }
 
@@ -1698,18 +1700,31 @@ tcp_tl_check_connection (struct eXosip_t *excontext)
     if (reserved->socket_tab[pos].socket > 0) {
       i = _tcp_tl_is_connected (reserved->socket_tab[pos].socket);
       if (i > 0) {
+        if (reserved->socket_tab[pos].tcp_inprogress_max_timeout>0) {
+          time_t now = osip_getsystemtime (NULL);
+          if (now > reserved->socket_tab[pos].tcp_inprogress_max_timeout) {
+            OSIP_TRACE (osip_trace
+                        (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection socket is in progress since 32 seconds / close socket\n"));
+            reserved->socket_tab[pos].tcp_inprogress_max_timeout=0;
+            _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
+            _eXosip_mark_all_registrations_expired (excontext);
+            continue;
+          }
+        }
         OSIP_TRACE (osip_trace
                     (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection socket node:%s:%i, socket %d [pos=%d], in progress\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
         continue;
       }
       else if (i == 0) {
+        reserved->socket_tab[pos].tcp_inprogress_max_timeout=0;
+
         OSIP_TRACE (osip_trace
                     (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection socket node:%s:%i , socket %d [pos=%d], connected\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
         if (reserved->socket_tab[pos].tcp_max_timeout>0) {
           time_t now = osip_getsystemtime (NULL);
           if (now > reserved->socket_tab[pos].tcp_max_timeout) {
             OSIP_TRACE (osip_trace
-                        (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection we excepted a reply on established sockets / close socket\n", reserved->socket_tab[pos].remote_ip, reserved->socket_tab[pos].remote_port, reserved->socket_tab[pos].socket, pos));
+                        (__FILE__, __LINE__, OSIP_INFO2, NULL, "tcp_tl_check_connection we excepted a reply on established sockets / close socket\n"));
             reserved->socket_tab[pos].tcp_max_timeout=0;
             _tcp_tl_close_sockinfo (&reserved->socket_tab[pos]);
             _eXosip_mark_all_registrations_expired (excontext);
