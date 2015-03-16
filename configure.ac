@@ -381,7 +381,11 @@ AS_IF([test "$enable_openssl" = "yes" -o "$enable_openssl" = "auto"],
                          [EXOSIP_LIB="$EXOSIP_LIB $SSL_LIBS"]
                          AC_CHECK_HEADERS(openssl/ssl.h),
                          [AS_IF([test "$enable_openssl" = "yes"],
-                                [AC_MSG_ERROR([can not find openssl])])
+                                [AC_MSG_WARN([can not find openssl with pkgconfig])
+				AC_CHECK_HEADERS(openssl/ssl.h)
+				AC_CHECK_LIB(ssl,SSL_CTX_new,[EXOSIP_LIB="$EXOSIP_LIB -lssl"])
+				AC_CHECK_LIB(crypto,MD5,[EXOSIP_LIB="$EXOSIP_LIB -lcrypto"])
+				])
                          ])
       ])
 
