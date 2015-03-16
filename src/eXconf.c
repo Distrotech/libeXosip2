@@ -588,6 +588,7 @@ eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr,
   if (i != 0) {
     if (excontext->eXtl_transport.tl_free != NULL)
       excontext->eXtl_transport.tl_free (excontext);
+    excontext->eXtl_transport.enabled=0;
     return i;
   }
 
