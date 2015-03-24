@@ -116,8 +116,14 @@ udp_tl_free (struct eXosip_t *excontext)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QOS: check OS support for qwave.lib: %i %i %i\n",
       ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber));
     if (ovi.dwMajorVersion > 5) {
-
-      if (FAILED(__HrLoadAllImportsForDll("qwave.dll"))) {
+      HRESULT hr = E_FAIL;
+      __try {
+        hr = __HrLoadAllImportsForDll("qwave.dll");
+      }
+      __except(EXCEPTION_EXECUTE_HANDLER) {
+        hr = E_FAIL;
+      }
+      if (! SUCCEEDED(hr)) {
         OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "QOS: Failed to load qwave.dll: no QoS available\n"));
       }
       else
@@ -176,7 +182,7 @@ _udp_tl_transport_set_dscp_qos (struct eXosip_t *excontext, struct sockaddr *rem
 {
   int res=0;
   QOS_TRAFFIC_TYPE tos;
-	OSVERSIONINFOEX ovi;
+  OSVERSIONINFOEX ovi;
 
   struct eXtludp *reserved = (struct eXtludp *) excontext->eXtludp_reserved;
 
@@ -191,11 +197,12 @@ _udp_tl_transport_set_dscp_qos (struct eXosip_t *excontext, struct sockaddr *rem
   if (excontext->dscp<=0)
     return 0;
 
-	memset(&ovi, 0, sizeof(ovi));
-	ovi.dwOSVersionInfoSize = sizeof(ovi);
-	GetVersionEx((LPOSVERSIONINFO) & ovi);
+  memset(&ovi, 0, sizeof(ovi));
+  ovi.dwOSVersionInfoSize = sizeof(ovi);
+  GetVersionEx((LPOSVERSIONINFO) & ovi);
 
-	if (ovi.dwMajorVersion > 5) {
+  if (ovi.dwMajorVersion > 5) {
+    HRESULT hr = E_FAIL;
 
     if (excontext->dscp<=0x8)
       tos=QOSTrafficTypeBackground;
@@ -209,7 +216,13 @@ _udp_tl_transport_set_dscp_qos (struct eXosip_t *excontext, struct sockaddr *rem
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "QOS: Check OS support for qwave.lib: %i %i %i\n",
       ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber));
 
-		if (FAILED(__HrLoadAllImportsForDll("qwave.dll"))) {
+    __try {
+      hr = __HrLoadAllImportsForDll("qwave.dll");
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+      hr = E_FAIL;
+    }
+    if (! SUCCEEDED(hr)) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "QOS: Failed to load qwave.dll: no QoS available\n"));
 		}
 		else
