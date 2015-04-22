@@ -1351,7 +1351,7 @@ static const char *rcodes[] = {
 };
 
 static void
-_store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
+_store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen, int verbose)
 {
   osip_naptr_t *output_record = (osip_naptr_t *) arg;
 
@@ -1361,10 +1361,10 @@ _store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
 
   (void) timeouts;
 
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Checking for A records %s:\n", output_record->domain));
-
   if (status != ARES_SUCCESS) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS A: %s %s\n", output_record->domain, ares_strerror (status)));
+    if (verbose) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS A: %s %s\n", output_record->domain, ares_strerror (status)));
+    }
     if (!abuf)
       return;
   }
@@ -1384,9 +1384,6 @@ _store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
   ancount = DNS_HEADER_ANCOUNT (abuf);
   nscount = DNS_HEADER_NSCOUNT (abuf);
   arcount = DNS_HEADER_ARCOUNT (abuf);
-
-  /* the answer header. */
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "flags: %s%s%s%s%s %s/%s\n", qr ? "qr " : "", aa ? "aa " : "", tc ? "tc " : "", rd ? "rd " : "", ra ? "ra " : "", opcodes[opcode], rcodes[rcode]));
 
   /* the questions. */
   aptr = abuf + HFIXEDSZ;
@@ -1419,7 +1416,7 @@ _store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
 }
 
 static void
-_store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
+_store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen, int verbose)
 {
   osip_naptr_t *output_record = (osip_naptr_t *) arg;
 
@@ -1429,10 +1426,10 @@ _store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
 
   (void) timeouts;
 
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Checking for SRV query %s:\n", output_record->domain));
-
   if (status != ARES_SUCCESS) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS SRV: %s %s\n", output_record->domain, ares_strerror (status)));
+    if (verbose) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS SRV: %s %s\n", output_record->domain, ares_strerror (status)));
+    }
     if (!abuf)
       return;
   }
@@ -1452,9 +1449,6 @@ _store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
   ancount = DNS_HEADER_ANCOUNT (abuf);
   nscount = DNS_HEADER_NSCOUNT (abuf);
   arcount = DNS_HEADER_ARCOUNT (abuf);
-
-  /* the answer header. */
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "flags: %s%s%s%s%s %s/%s\n", qr ? "qr " : "", aa ? "aa " : "", tc ? "tc " : "", rd ? "rd " : "", ra ? "ra " : "", opcodes[opcode], rcodes[rcode]));
 
   /* the questions. */
   aptr = abuf + HFIXEDSZ;
@@ -1487,7 +1481,7 @@ _store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
 }
 
 static void
-_store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
+_store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen, int verbose)
 {
   osip_naptr_t *output_record = (osip_naptr_t *) arg;
 
@@ -1497,10 +1491,10 @@ _store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen
 
   (void) timeouts;
 
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Answer for NAPTR query %s:\n", output_record->domain));
-
   if (status != ARES_SUCCESS) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS NAPTR: %s %s\n", output_record->domain, ares_strerror (status)));
+    if (verbose) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS NAPTR: %s %s\n", output_record->domain, ares_strerror (status)));
+    }
     if (!abuf)
       return;
   }
@@ -1520,9 +1514,6 @@ _store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen
   ancount = DNS_HEADER_ANCOUNT (abuf);
   nscount = DNS_HEADER_NSCOUNT (abuf);
   arcount = DNS_HEADER_ARCOUNT (abuf);
-
-  /* the answer header. */
-  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "flags: %s%s%s%s%s %s/%s\n", qr ? "qr " : "", aa ? "aa " : "", tc ? "tc " : "", rd ? "rd " : "", ra ? "ra " : "", opcodes[opcode], rcodes[rcode]));
 
   /* the questions. */
   aptr = abuf + HFIXEDSZ;
@@ -1557,8 +1548,8 @@ _store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen
 static void
 _srv_callback (void *arg, int status, int timeouts, unsigned char *abuf, int alen)
 {
-  _store_srv (arg, status, timeouts, abuf, alen);
-  _store_A (arg, status, timeouts, abuf, alen);
+  _store_srv (arg, status, timeouts, abuf, alen, 1);
+  _store_A (arg, status, timeouts, abuf, alen, 0);
 }
 
 static void
@@ -1570,7 +1561,7 @@ _naptr_callback (void *arg, int status, int timeouts, unsigned char *abuf, int a
     if (status == ARES_ENODATA) {       /* no NAPTR record for this domain */
       osip_srv_record_t srvrecord;
 
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "_naptr_callback: %s %s\n", output_record->domain, ares_strerror (status)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "_naptr_callback: %s %s\n", output_record->domain, ares_strerror (status)));
       /* pre-set all SRV record to unsupported? */
       output_record->naptr_state = OSIP_NAPTR_STATE_NAPTRDONE;
 
@@ -1636,9 +1627,9 @@ _naptr_callback (void *arg, int status, int timeouts, unsigned char *abuf, int a
   output_record->sipdtls_record.srv_state = OSIP_SRV_STATE_NOTSUPPORTED;
   output_record->sipsctp_record.srv_state = OSIP_SRV_STATE_NOTSUPPORTED;
 
-  _store_naptr (arg, status, timeouts, abuf, alen);
-  _store_srv (arg, status, timeouts, abuf, alen);
-  _store_A (arg, status, timeouts, abuf, alen);
+  _store_naptr (arg, status, timeouts, abuf, alen, 1);
+  _store_srv (arg, status, timeouts, abuf, alen, 0);
+  _store_A (arg, status, timeouts, abuf, alen, 0);
   output_record->naptr_state = OSIP_NAPTR_STATE_NAPTRDONE;
 
   /* verify if we already have OSIP_NAPTR_STATE_SRVDONE automatically! */
