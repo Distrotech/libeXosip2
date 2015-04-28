@@ -99,6 +99,7 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
+#include <openssl/tls1.h>
 
 #define SSLDEBUG 1
 /*#define PATH "D:/conf/"
@@ -140,6 +141,7 @@ struct _tls_stream {
   int socket;
   struct sockaddr ai_addr;
   socklen_t ai_addrlen;
+  char sni_servernameindication[256];
   char remote_ip[65];
   int remote_port;
   char *previous_content;
@@ -1099,12 +1101,14 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
   SSL_CTX *ctx;
 
   if (transport == IPPROTO_UDP) {
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    meth = DTLSv1_client_method ();
+#if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
+    meth = DTLS_server_method ();
+#elif !(OPENSSL_VERSION_NUMBER < 0x00908000L)
+    meth = DTLSv1_server_method ();
 #endif
   }
   else if (transport == IPPROTO_TCP) {
-    meth = TLSv1_client_method ();
+    meth = SSLv23_client_method ();
   }
   else {
     return NULL;
@@ -1212,22 +1216,42 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read CA list ('%s')\n", client_ctx->root_ca_cert));
 
     {
+#if 0 /* TODO: host name validation... !(OPENSSL_VERSION_NUMBER < 0x10002000L) */
+      X509_STORE *pkix_validation_store = SSL_CTX_get_cert_store (ctx);
+      const X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_lookup ("ssl_server");
+
+      if (param != NULL) { /* const value, we have to copy (inherit) */
+        if (X509_VERIFY_PARAM_inherit (pkix_validation_store->param, param)) {
+          X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_TRUSTED_FIRST);
+          X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_PARTIAL_CHAIN);
+        } else {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_inherit: failed for ssl_server\n"));
+        }
+        if (X509_VERIFY_PARAM_set1_host (pkix_validation_store->param, certif_client_local_cn_name, 0)) {
+          X509_VERIFY_PARAM_set_hostflags (pkix_validation_store->param, X509_CHECK_FLAG_NO_WILDCARDS);
+        } else {
+          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_set1_host: %s failed\n", certif_client_local_cn_name);
+        }
+      } else {
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_lookup: failed for ssl_server\n"));
+      }
+      SSL_CTX_set_verify (ctx, SSL_VERIFY_PEER, &verify_cb);
+#else
       int verify_mode = SSL_VERIFY_NONE;
 
       if (excontext->tls_verify_client_certificate > 0)
         verify_mode = SSL_VERIFY_PEER;
 
       SSL_CTX_set_verify (ctx, verify_mode, &verify_cb);
+#endif
       SSL_CTX_set_verify_depth (ctx, ex_verify_depth + 1);
     }
   }
 
-  SSL_CTX_set_options (ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_CIPHER_SERVER_PREFERENCE);
+  SSL_CTX_set_options (ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
-  if (!SSL_CTX_set_cipher_list (ctx, "ALL")) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "set_cipher_list: cannot set ALL cipher\n"));
-    SSL_CTX_free (ctx);
-    return NULL;
+  if (!SSL_CTX_set_cipher_list (ctx, "HIGH:-COMPLEMENTOFDEFAULT")) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "set_cipher_list: using DEFAULT list now\n"));
   }
 
   if (_tls_add_certificates (ctx) <= 0) {
@@ -1248,13 +1272,15 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
 
   if (transport == IPPROTO_UDP) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "DTLS-UDP server method\n"));
-#if !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    meth = DTLSv1_server_method ();
+#if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
+    meth = DTLS_client_method ();
+#elif !(OPENSSL_VERSION_NUMBER < 0x00908000L)
+    meth = DTLSv1_client_method ();
 #endif
   }
   else if (transport == IPPROTO_TCP) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "TLS server method\n"));
-    meth = TLSv1_server_method ();
+    meth = SSLv23_server_method ();
   }
   else {
     return NULL;
@@ -1313,12 +1339,10 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
     SSL_CTX_set_verify_depth (ctx, ex_verify_depth + 1);
   }
 
-  SSL_CTX_set_options (ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_CIPHER_SERVER_PREFERENCE);
+  SSL_CTX_set_options (ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE | SSL_OP_CIPHER_SERVER_PREFERENCE);
 
-  if (!SSL_CTX_set_cipher_list (ctx, "ALL")) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "set_cipher_list: cannot set ALL cipher\n"));
-    SSL_CTX_free (ctx);
-    return NULL;
+  if (!SSL_CTX_set_cipher_list (ctx, "HIGH:-COMPLEMENTOFDEFAULT")) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "set_cipher_list: using DEFAULT list now\n"));
   }
 
   if (cert == NULL && srv_ctx->server.priv_key[0] != '\0') {
@@ -1354,6 +1378,26 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
     build_dh_params (ctx);
   else
     load_dh_params (ctx, srv_ctx->dh_param);
+
+#ifndef SSL_CTRL_SET_ECDH_AUTO
+  #define SSL_CTRL_SET_ECDH_AUTO 94
+#endif
+
+  /* SSL_CTX_set_ecdh_auto (ctx, on) requires OpenSSL 1.0.2 which wraps: */
+  if (SSL_CTX_ctrl (ctx, SSL_CTRL_SET_ECDH_AUTO, 1, NULL)) {
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "ctrl_set_ecdh_auto: faster PFS ciphers enabled\n"));
+#if !defined(OPENSSL_NO_ECDH) && !(OPENSSL_VERSION_NUMBER < 0x10000000L)
+  } else {
+    /* enables AES-128 ciphers, to get AES-256 use NID_secp384r1 */
+    EC_KEY *ecdh = EC_KEY_new_by_curve_name (NID_X9_62_prime256v1);
+    if (ecdh != NULL) {
+      if (SSL_CTX_set_tmp_ecdh (ctx, ecdh)) {
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "set_tmp_ecdh: faster PFS ciphers enabled (secp256r1)\n"));
+      }
+      EC_KEY_free(ecdh);
+    }
+#endif
+  }
 
   generate_eph_rsa_key (ctx);
 
@@ -1810,6 +1854,11 @@ _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sock
     }
     SSL_set_bio (sockinfo->ssl_conn, sbio, sbio);
 
+#ifndef OPENSSL_NO_TLSEXT
+    if (!SSL_set_tlsext_host_name (sockinfo->ssl_conn, sockinfo->sni_servernameindication /* "host.name.after.dns.srv.com" */)) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "set_tlsext_host_name (SNI): no servername gets indicated\n"));
+    }
+#endif
   }
 
   if (SSL_is_init_finished (sockinfo->ssl_conn)) {
@@ -2571,6 +2620,8 @@ _tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
     reserved->socket_tab[pos].ssl_state = ssl_state;
     reserved->socket_tab[pos].ssl_ctx = NULL;
 
+    osip_strncpy (reserved->socket_tab[pos].sni_servernameindication, host, sizeof (reserved->socket_tab[pos].sni_servernameindication) - 1);
+    
     {
       struct sockaddr_storage local_ai_addr;
       socklen_t selected_ai_addrlen;
