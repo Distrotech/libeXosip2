@@ -1102,9 +1102,9 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
 
   if (transport == IPPROTO_UDP) {
 #if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
-    meth = DTLS_server_method ();
+    meth = DTLS_client_method ();
 #elif !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    meth = DTLSv1_server_method ();
+    meth = DTLSv1_client_method ();
 #endif
   }
   else if (transport == IPPROTO_TCP) {
@@ -1273,9 +1273,9 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
   if (transport == IPPROTO_UDP) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "DTLS-UDP server method\n"));
 #if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
-    meth = DTLS_client_method ();
+    meth = DTLS_server_method ();
 #elif !(OPENSSL_VERSION_NUMBER < 0x00908000L)
-    meth = DTLSv1_client_method ();
+    meth = DTLSv1_server_method ();
 #endif
   }
   else if (transport == IPPROTO_TCP) {
