@@ -1883,6 +1883,9 @@ _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sock
     if (res != SSL_ERROR_WANT_READ && res != SSL_ERROR_WANT_WRITE) {
       print_ssl_error (res);
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "SSL_connect error\n"));
+
+      /* any transaction here should fail? --> but this is called from _tls_tl_recv not the send side... */
+
       return -1;
     }
 
@@ -2380,7 +2383,7 @@ _tls_tl_find_socket (struct eXosip_t *excontext, char *host, int port)
 
 
 static int
-_tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
+_tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port, int retry)
 {
   struct eXtltls *reserved = (struct eXtltls *) excontext->eXtltls_reserved;
   int pos;
@@ -2428,6 +2431,9 @@ _tls_tl_connect_socket (struct eXosip_t *excontext, char *host, int port)
       return i;
     }
   }
+
+  if (retry>0)
+    return -1;
 
   for (curinfo = addrinfo; curinfo; curinfo = curinfo->ai_next) {
     if (curinfo->ai_protocol && curinfo->ai_protocol != IPPROTO_TCP) {
@@ -2889,9 +2895,28 @@ tls_tl_send_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_m
 
     /* Step 2: create new socket with host:port */
     if (pos < 0) {
-      pos = _tls_tl_connect_socket (excontext, host, port);
+      int val6 = (int) tr->reserved6;
+      pos = _tls_tl_connect_socket (excontext, host, port, (val6 & 0x2));
+      if (pos<0) {
+        if ((val6 & 0x1) == 0) {
+          tr->reserved6 = (val6 | 0x1);
+          val6 = tr->reserved6;
+          if (naptr_record != NULL && (MSG_IS_REGISTER (sip) || MSG_IS_OPTIONS (sip))) {
+            if (pos >= 0) _tls_tl_close_sockinfo (&reserved->socket_tab[pos]);
+            if (eXosip_dnsutils_rotate_srv (&naptr_record->siptls_record) > 0) {
+              OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL,
+                                      "Doing TLS failover: %s:%i->%s:%i\n", host, port, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].srv, naptr_record->siptls_record.srventry[naptr_record->siptls_record.index].port));
+              tr->reserved6 = (val6 & ~0x2);
+              return OSIP_SUCCESS + 1;    /* retry for next retransmission! */
+            }
+          }
+        }
+        return -1;
+      }
+      tr->reserved6 = (val6 | 0x2);
     }
     if (pos >= 0) {
+
       out_socket = reserved->socket_tab[pos].socket;
       ssl = reserved->socket_tab[pos].ssl_conn;
       if (MSG_IS_REGISTER (sip) && atoi(sip->cseq->number)!=1) {
