@@ -98,6 +98,9 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+#if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
+#include <openssl/x509v3.h>
+#endif
 #include <openssl/rand.h>
 #include <openssl/tls1.h>
 
@@ -129,7 +132,7 @@
 #define MULTITASKING_ENABLED
 #endif
 
-SSL_CTX *initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport);
+SSL_CTX *initialize_client_ctx (struct eXosip_t *excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport, const char *sni_servernameindication);
 
 SSL_CTX *initialize_server_ctx (struct eXosip_t *excontext, const char *certif_local_cn_name, eXosip_tls_ctx_t * srv_ctx, int transport);
 
@@ -1094,7 +1097,7 @@ eXosip_tls_verify_certificate (struct eXosip_t * excontext, int _tls_verify_clie
 }
 
 SSL_CTX *
-initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport)
+initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_local_cn_name, eXosip_tls_ctx_t * client_ctx, int transport, const char *sni_servernameindication)
 {
   const SSL_METHOD *meth = NULL;
   X509 *cert = NULL;
@@ -1216,26 +1219,33 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read CA list ('%s')\n", client_ctx->root_ca_cert));
 
     {
-#if 0 /* TODO: host name validation... !(OPENSSL_VERSION_NUMBER < 0x10002000L) */
-      X509_STORE *pkix_validation_store = SSL_CTX_get_cert_store (ctx);
-      const X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_lookup ("ssl_server");
+#if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
+      int verify_mode = SSL_VERIFY_NONE;
 
-      if (param != NULL) { /* const value, we have to copy (inherit) */
-        if (X509_VERIFY_PARAM_inherit (pkix_validation_store->param, param)) {
-          X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_TRUSTED_FIRST);
-          X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_PARTIAL_CHAIN);
-        } else {
-          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_inherit: failed for ssl_server\n"));
-        }
-        if (X509_VERIFY_PARAM_set1_host (pkix_validation_store->param, certif_client_local_cn_name, 0)) {
-          X509_VERIFY_PARAM_set_hostflags (pkix_validation_store->param, X509_CHECK_FLAG_NO_WILDCARDS);
-        } else {
-          OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_set1_host: %s failed\n", certif_client_local_cn_name);
-        }
-      } else {
-        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_lookup: failed for ssl_server\n"));
+      if (excontext->tls_verify_client_certificate > 0 && sni_servernameindication!=NULL) {
+	X509_STORE *pkix_validation_store = SSL_CTX_get_cert_store (ctx);
+	const X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_lookup ("ssl_server");
+	
+	if (param != NULL) { /* const value, we have to copy (inherit) */
+	  if (X509_VERIFY_PARAM_inherit (pkix_validation_store->param, param)) {
+	    X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_TRUSTED_FIRST);
+	    X509_STORE_set_flags (pkix_validation_store, X509_V_FLAG_PARTIAL_CHAIN);
+	  } else {
+	    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_inherit: failed for ssl_server\n"));
+	  }
+	  if (X509_VERIFY_PARAM_set1_host (pkix_validation_store->param, sni_servernameindication, 0)) {
+	    X509_VERIFY_PARAM_set_hostflags (pkix_validation_store->param, X509_CHECK_FLAG_NO_WILDCARDS);
+	  } else {
+	    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_set1_host: %s failed\n", sni_servernameindication));
+	  }
+	} else {
+	  OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "PARAM_lookup: failed for ssl_server\n"));
+	}
       }
-      SSL_CTX_set_verify (ctx, SSL_VERIFY_PEER, &verify_cb);
+
+      if (excontext->tls_verify_client_certificate > 0)
+        verify_mode = SSL_VERIFY_PEER;
+      SSL_CTX_set_verify (ctx, verify_mode, &verify_cb);
 #else
       int verify_mode = SSL_VERIFY_NONE;
 
@@ -1447,7 +1457,7 @@ tls_tl_open (struct eXosip_t *excontext)
   reserved->server_ctx = initialize_server_ctx (excontext, excontext->tls_local_cn_name, &excontext->eXosip_tls_ctx_params, IPPROTO_TCP);
 
   /* always initialize the client */
-  reserved->client_ctx = initialize_client_ctx (excontext, excontext->tls_client_local_cn_name, &excontext->eXosip_tls_ctx_params, IPPROTO_TCP);
+  reserved->client_ctx = initialize_client_ctx (excontext, excontext->tls_client_local_cn_name, &excontext->eXosip_tls_ctx_params, IPPROTO_TCP, NULL);
 
 /*only necessary under Windows-based OS, unix-like systems use /dev/random or /dev/urandom */
 #if defined(WIN32) || defined(_WINDOWS)
@@ -1838,7 +1848,7 @@ _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sock
   int tries_left = 100;
 
   if (sockinfo->ssl_ctx == NULL) {
-    sockinfo->ssl_ctx = initialize_client_ctx (excontext, excontext->tls_client_local_cn_name, &excontext->eXosip_tls_ctx_params, IPPROTO_TCP);
+    sockinfo->ssl_ctx = initialize_client_ctx (excontext, excontext->tls_client_local_cn_name, &excontext->eXosip_tls_ctx_params, IPPROTO_TCP, sockinfo->sni_servernameindication);
 
     /* FIXME: changed parameter from ctx to client_ctx -> works now */
     sockinfo->ssl_conn = SSL_new (sockinfo->ssl_ctx);
