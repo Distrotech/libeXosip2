@@ -475,6 +475,10 @@ extern "C" {
     int auto_masquerade_contact;
     int reuse_tcp_port;
     int use_ephemeral_port;
+
+    CbSipWakeLock cbsipWakeLock;
+    int outgoing_wake_lock_state;
+    int incoming_wake_lock_state;
   };
 
   int _eXosip_guess_ip_for_via (struct eXosip_t *excontext, int family, char *address, int size);

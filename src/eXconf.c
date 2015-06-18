@@ -839,6 +839,23 @@ eXosip_execute (struct eXosip_t *excontext)
   _eXosip_release_terminated_in_subscriptions (excontext);
 #endif
 
+  if (excontext->cbsipWakeLock!=NULL && excontext->outgoing_wake_lock_state==0) {
+    int count = osip_list_size(&excontext->j_osip->osip_ict_transactions);
+    count+=osip_list_size(&excontext->j_osip->osip_nict_transactions);
+    if (count>0) {
+      excontext->cbsipWakeLock(3);
+      excontext->outgoing_wake_lock_state++;
+    }
+  } else if (excontext->cbsipWakeLock!=NULL && excontext->outgoing_wake_lock_state>0) {
+    int count = osip_list_size(&excontext->j_osip->osip_ict_transactions);
+    count+=osip_list_size(&excontext->j_osip->osip_nict_transactions);
+    if (count==0) {
+      excontext->cbsipWakeLock(2);
+      excontext->outgoing_wake_lock_state=0;
+    }
+  }
+
+
   _eXosip_keep_alive (excontext);
 
   eXosip_unlock (excontext);
@@ -1082,6 +1099,9 @@ eXosip_set_option (struct eXosip_t *excontext, int opt, const void *value)
   case EXOSIP_OPT_ENABLE_USE_EPHEMERAL_PORT:
     val = *((int *) value);
     excontext->use_ephemeral_port = val;
+    break;
+  case EXOSIP_OPT_SET_CALLBACK_WAKELOCK:
+    excontext->cbsipWakeLock = (CbSipWakeLock) value;
     break;
   default:
     return OSIP_BADPARAMETER;

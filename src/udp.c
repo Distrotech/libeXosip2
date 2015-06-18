@@ -1640,8 +1640,19 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
     /* if (i == -1)
        continue; */
 #else
-    if ((i == -1) && (errno == EINTR || errno == EAGAIN))
+    if ((i == -1) && (errno == EINTR || errno == EAGAIN)) {
+
+      if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state>0) {
+        int count = osip_list_size(&excontext->j_osip->osip_ist_transactions);
+        count+=osip_list_size(&excontext->j_osip->osip_nist_transactions);
+        if (count==0) {
+          excontext->cbsipWakeLock(0);
+          excontext->incoming_wake_lock_state=0;
+        }
+      }
+
       continue;
+    }
 #endif
 
     osip_compensatetime ();
@@ -1662,7 +1673,20 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
 #endif
     }
     else {
+
+      if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state==0)
+        excontext->cbsipWakeLock(++excontext->incoming_wake_lock_state);
+
       excontext->eXtl_transport.tl_read_message (excontext, &osip_fdset, &osip_wrset);
+
+      if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state>0) {
+        int count = osip_list_size(&excontext->j_osip->osip_ist_transactions);
+        count+=osip_list_size(&excontext->j_osip->osip_nist_transactions);
+        if (count==0) {
+          excontext->cbsipWakeLock(0);
+          excontext->incoming_wake_lock_state=0;
+        }
+      }
     }
 
     max_message_nb--;

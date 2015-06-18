@@ -127,6 +127,7 @@ extern "C" {
 #define EXOSIP_OPT_ENABLE_IPV6 (EXOSIP_OPT_BASE_OPTION+20) /**< int *: 0 to disable -this is a per-eXosip_t parameter for using IPv6 DNS request */
 #define EXOSIP_OPT_ENABLE_REUSE_TCP_PORT (EXOSIP_OPT_BASE_OPTION+21) /**< int *: 0 to disable, 1 to enable reusing local tcp port for outgoing tcp connection */
 #define EXOSIP_OPT_ENABLE_USE_EPHEMERAL_PORT (EXOSIP_OPT_BASE_OPTION+22) /**< int *: 0 to disable, 1 to enable usage of emphemeral tcp port in Contact headers instead of local listening port for TCP/TLS */
+#define EXOSIP_OPT_SET_CALLBACK_WAKELOCK (EXOSIP_OPT_BASE_OPTION+23) /**< CbSipWakeLock *: set a callback to be called upon start/end of transaction */
 
 #define EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE (EXOSIP_OPT_BASE_OPTION+500) /**< int *: enable verification of certificate for TLS connection */
 #define EXOSIP_OPT_SET_TLS_CERTIFICATES_INFO (EXOSIP_OPT_BASE_OPTION+501) /**< eXosip_tls_ctx_t *: client and/or server certificate/ca-root/key info */
@@ -280,6 +281,7 @@ extern "C" {
   const char *eXosip_get_version (void);
 
   typedef void (*CbSipCallback) (osip_message_t * msg, int received);
+  typedef void (*CbSipWakeLock) (int state);
 
 /**
  * Set a callback to get sent and received SIP messages.
