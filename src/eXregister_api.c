@@ -272,7 +272,7 @@ _eXosip_register_build_register (struct eXosip_t *excontext, eXosip_reg_t * jr, 
         &osip_proxy_authorization_free);
 
 
-      i = _eXosip_update_top_via (reg);
+      i = _eXosip_update_top_via (excontext, reg);
       if (i != 0) {
         osip_message_free (reg);
         if (last_response != NULL)
@@ -486,6 +486,9 @@ eXosip_register_build_register (struct eXosip_t *excontext, int rid, int expires
       return OSIP_WRONG_STATE;
     }
   }
+
+  /* reset to allow automasquerading when user request a REGISTER refresh */
+  jr->r_last_deletion=0;
 
   i = _eXosip_register_build_register (excontext, jr, reg);
   if (i != 0) {

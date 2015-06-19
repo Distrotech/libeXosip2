@@ -271,6 +271,7 @@ extern "C" {
 #define RS_MASQUERADINGREQUIRED 4
 #define RS_MASQUERADINGPROCEEDING 5
     int registration_step;      /* registration step for learning contact header binding */
+    time_t r_last_deletion;     /* prevent loop for automasquerade: no more than one per minute. */
 
     struct __eXosip_sockaddr addr;
     int len;
@@ -499,7 +500,7 @@ extern "C" {
   int _eXosip_generating_cancel (struct eXosip_t *excontext, osip_message_t ** dest, osip_message_t * request_cancelled);
   int _eXosip_generating_bye (struct eXosip_t *excontext, osip_message_t ** bye, osip_dialog_t * dialog, char *transport);
 
-  int _eXosip_update_top_via (osip_message_t * sip);
+  int _eXosip_update_top_via (struct eXosip_t *excontext, osip_message_t * sip);
   int _eXosip_request_add_via (struct eXosip_t *excontext, osip_message_t * request, const char *transport, const char *locip);
 
   void _eXosip_mark_all_registrations_expired (struct eXosip_t *excontext);

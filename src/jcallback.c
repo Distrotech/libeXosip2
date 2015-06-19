@@ -130,7 +130,7 @@ _eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *j
     return;
 
   osip_message_get_via(response, 0, &via);
-  if (via==NULL || via->protocol==NULL)
+  if (via==NULL || via->protocol==NULL || via->host==NULL)
     return;
 
   osip_message_get_contact(request, 0, &contact);
@@ -142,13 +142,16 @@ _eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *j
   if (br!=NULL && br->gvalue!=NULL)
     received_viahost = br->gvalue;
 
-  if (received_viahost==NULL)
-    received_viahost = via->host;
+  //if (received_viahost==NULL)
+  //  received_viahost = via->host;
 
-  if (received_viahost==NULL)
-    return;
+  //if (received_viahost==NULL)
+  //  return;
 
   osip_via_param_get_byname(via, "rport", &br);
+  if (br!=NULL && br->gvalue==NULL)
+    return; /* the feature doesn't work if no rport is provided back */
+
   if (br!=NULL && br->gvalue!=NULL)
     rport_viaport = br->gvalue;
 
@@ -174,11 +177,34 @@ _eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *j
       contact_port = port_5060;
   }
 
-  if (osip_strcasecmp(contact_port, rport_viaport)==0
-    && osip_strcasecmp(received_viahost, contact->url->host)==0)
-    return;
+  if (jr->r_last_deletion>0)
+    return; /* avoid loop. */
 
-  jr->registration_step=RS_DELETIONREQUIRED; /* proceed with deletion and re-registration of new contact */
+  if (osip_strcasecmp(contact_port, rport_viaport)!=0)
+  {
+    /* the port parameter is different from contact. */
+    jr->registration_step=RS_DELETIONREQUIRED; /* proceed with deletion and re-registration of new contact */
+    jr->r_last_deletion=osip_getsystemtime(NULL);
+    return;
+  }
+
+  if (received_viahost!=NULL && osip_strcasecmp(received_viahost, contact->url->host)!=0)
+  {
+    /* a received parameter was added and is different from contact. */
+    jr->registration_step=RS_DELETIONREQUIRED; /* proceed with deletion and re-registration of new contact */
+    jr->r_last_deletion=osip_getsystemtime(NULL);
+    return;
+  }
+
+  if (received_viahost==NULL)
+  {
+    if (osip_strcasecmp(via->host, contact->url->host)!=0) {
+      /* a received parameter was not added and local ip is different from contact: there is a possibility of IP change */
+      jr->registration_step=RS_DELETIONREQUIRED; /* proceed with deletion and re-registration of new contact */
+      jr->r_last_deletion=osip_getsystemtime(NULL);
+    }
+    return;
+  }
 }
 
 int

@@ -445,7 +445,7 @@ _eXosip_insubscription_send_request_with_credential (struct eXosip_t *excontext,
     jd->d_dialog->local_cseq++;
   }
 
-  i = _eXosip_update_top_via (msg);
+  i = _eXosip_update_top_via (excontext, msg);
   if (i != 0) {
     osip_message_free (msg);
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: unsupported protocol\n"));

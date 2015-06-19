@@ -441,7 +441,7 @@ _eXosip_subscribe_send_request_with_credential (struct eXosip_t *excontext, eXos
     jd->d_dialog->local_cseq++;
   }
 
-  i = _eXosip_update_top_via (msg);
+  i = _eXosip_update_top_via (excontext, msg);
   if (i != 0) {
     osip_message_free (msg);
     return i;

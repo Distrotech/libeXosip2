@@ -182,7 +182,7 @@ _eXosip_retry_with_auth (struct eXosip_t *excontext, eXosip_dialog_t * jd, osip_
     jd->d_dialog->local_cseq++;
   }
 
-  i = _eXosip_update_top_via (msg);
+  i = _eXosip_update_top_via (excontext, msg);
   if (i != 0) {
     osip_message_free (msg);
     return i;
@@ -310,7 +310,7 @@ _eXosip_publish_refresh (struct eXosip_t *excontext, eXosip_dialog_t * jd, osip_
     jd->d_dialog->local_cseq++;
   }
 
-  i = _eXosip_update_top_via (msg);
+  i = _eXosip_update_top_via (excontext, msg);
   if (i != 0) {
     osip_message_free (msg);
     return i;
@@ -1026,6 +1026,9 @@ eXosip_automatic_action (struct eXosip_t *excontext)
         }
       }
     }
+
+    if (jr->r_last_deletion!=0 && jr->r_last_deletion+60<now)
+      jr->r_last_deletion=0; /* automasquerading may happen later than 1 minutes after previous one, to avoid loop (happens with bad NAT) */
   }
 
 #ifndef MINISIZE
@@ -1396,7 +1399,7 @@ _eXosip_add_authentication_information (struct eXosip_t *excontext, osip_message
 }
 
 int
-_eXosip_update_top_via (osip_message_t * sip)
+_eXosip_update_top_via (struct eXosip_t *excontext, osip_message_t * sip)
 {
   unsigned int number;
   char tmp[40];
@@ -1407,6 +1410,21 @@ _eXosip_update_top_via (osip_message_t * sip)
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "missing via in SIP message\n"));
     return OSIP_SYNTAXERROR;
   }
+
+  if (excontext->auto_masquerade_contact > 0) {
+    /* with auto masquerading enabled, it's easier to update Via host */
+    char localip[128];
+    memset (localip, '\0', sizeof (localip));
+    eXosip_guess_localip(excontext, AF_INET, localip, 128);
+    if (localip[0]!='\0' && osip_strcasecmp(via->host, localip)!=0) {
+      osip_free(via->host);
+      via->host = osip_strdup(localip);
+      if (via->host==NULL)
+        return OSIP_NOMEM;
+    }
+  }
+
+
   /* browse parameter and replace "branch" */
   osip_via_param_get_byname (via, "branch", &br);
 
