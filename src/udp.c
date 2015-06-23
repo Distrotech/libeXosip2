@@ -1679,13 +1679,14 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
 
       excontext->eXtl_transport.tl_read_message (excontext, &osip_fdset, &osip_wrset);
 
-      if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state>0) {
-        int count = osip_list_size(&excontext->j_osip->osip_ist_transactions);
-        count+=osip_list_size(&excontext->j_osip->osip_nist_transactions);
-        if (count==0) {
-          excontext->cbsipWakeLock(0);
-          excontext->incoming_wake_lock_state=0;
-        }
+    }
+
+    if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state>0) {
+      int count = osip_list_size(&excontext->j_osip->osip_ist_transactions);
+      count+=osip_list_size(&excontext->j_osip->osip_nist_transactions);
+      if (count==0) {
+        excontext->cbsipWakeLock(0);
+        excontext->incoming_wake_lock_state=0;
       }
     }
 
