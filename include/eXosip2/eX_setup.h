@@ -280,8 +280,13 @@ extern "C" {
   */
   const char *eXosip_get_version (void);
 
+#ifdef WIN32
+  typedef void (__stdcall *CbSipCallback) (osip_message_t * msg, int received);
+  typedef void (__stdcall *CbSipWakeLock) (int state);
+#else
   typedef void (*CbSipCallback) (osip_message_t * msg, int received);
   typedef void (*CbSipWakeLock) (int state);
+#endif
 
 /**
  * Set a callback to get sent and received SIP messages.
