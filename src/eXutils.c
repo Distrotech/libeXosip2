@@ -1363,7 +1363,7 @@ _store_A (void *arg, int status, int timeouts, unsigned char *abuf, int alen, in
 
   if (status != ARES_SUCCESS) {
     if (verbose) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS A: %s %s\n", output_record->domain, ares_strerror (status)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "DNS A: %s %s\n", output_record->domain, ares_strerror (status)));
     }
     if (!abuf)
       return;
@@ -1428,7 +1428,7 @@ _store_srv (void *arg, int status, int timeouts, unsigned char *abuf, int alen, 
 
   if (status != ARES_SUCCESS) {
     if (verbose) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS SRV: %s %s\n", output_record->domain, ares_strerror (status)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "DNS SRV: %s %s\n", output_record->domain, ares_strerror (status)));
     }
     if (!abuf)
       return;
@@ -1493,7 +1493,7 @@ _store_naptr (void *arg, int status, int timeouts, unsigned char *abuf, int alen
 
   if (status != ARES_SUCCESS) {
     if (verbose) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "DNS NAPTR: %s %s\n", output_record->domain, ares_strerror (status)));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "DNS NAPTR: %s %s\n", output_record->domain, ares_strerror (status)));
     }
     if (!abuf)
       return;

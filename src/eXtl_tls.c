@@ -1215,8 +1215,11 @@ initialize_client_ctx (struct eXosip_t * excontext, const char *certif_client_lo
 
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "eXosip: Trusted CA %s : '%s'\n", caFolder ? "folder" : "file", client_ctx->root_ca_cert));
 
-    if (!(SSL_CTX_load_verify_locations (ctx, caFile, caFolder)))
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read CA list ('%s')\n", client_ctx->root_ca_cert));
+    if ((caFile!=NULL && caFile[0] != '\0') || (caFolder!=NULL && caFolder[0] != '\0')) {
+      if (!(SSL_CTX_load_verify_locations (ctx, caFile, caFolder))) {
+        OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read client root_ca_cert list ('%s')\n", client_ctx->root_ca_cert));
+      }
+    }
 
     {
 #if !(OPENSSL_VERSION_NUMBER < 0x10002000L)
@@ -1337,8 +1340,10 @@ initialize_server_ctx (struct eXosip_t * excontext, const char *certif_local_cn_
   }
 
   /* Load the CAs we trust */
-  if (!(SSL_CTX_load_verify_locations (ctx, srv_ctx->root_ca_cert, 0))) {
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read CA list\n"));
+  if (srv_ctx->root_ca_cert[0]!='\0') {
+    if (!(SSL_CTX_load_verify_locations (ctx, srv_ctx->root_ca_cert, 0))) {
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't read server root_ca_cert ('%s')\n", srv_ctx->root_ca_cert));
+    }
   }
   {
     int verify_mode = SSL_VERIFY_NONE;
@@ -1471,7 +1476,7 @@ tls_tl_open (struct eXosip_t *excontext)
 
   /* Load randomness */
   if (!(RAND_load_file (excontext->eXosip_tls_ctx_params.random_file, 1024 * 1024)))
-    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "eXosip: Couldn't load randomness\n"));
+    OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "eXosip: Couldn't load randomness\n"));
 #endif
 
   res = _eXosip_get_addrinfo (excontext, &addrinfo, excontext->eXtl_transport.proto_ifs, excontext->eXtl_transport.proto_port, excontext->eXtl_transport.proto_num);
@@ -1935,21 +1940,9 @@ _tls_tl_ssl_connect_socket (struct eXosip_t *excontext, struct _tls_stream *sock
 
     cert_err = SSL_get_verify_result (sockinfo->ssl_conn);
     if (cert_err != X509_V_OK) {
-      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Failed to verify remote certificate\n"));
+      OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_WARNING, NULL, "Failed to verify remote certificate\n"));
       tls_dump_verification_failure (cert_err);
 
-#if 0
-      if (reserved->eXosip_tls_ctx_params.server.cert[0] != '\0') {
-        X509_free (cert);
-        return -1;
-      }
-      else if (cert_err != X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
-               && cert_err != X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN
-               && cert_err != X509_V_ERR_CRL_HAS_EXPIRED && cert_err != X509_V_ERR_CERT_HAS_EXPIRED && cert_err != X509_V_ERR_CERT_REVOKED && cert_err != X509_V_ERR_CERT_UNTRUSTED && cert_err != X509_V_ERR_CERT_REJECTED) {
-        X509_free (cert);
-        return -1;
-      }
-#endif
     }
     X509_free (cert);
   }
